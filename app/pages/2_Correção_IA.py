@@ -7,9 +7,6 @@ st.set_page_config(
 )
 
 with st.sidebar:
-    st.header("Configurações")
-    st.caption("Sistema de Ingestão v1.0")
-    st.divider()
     st.markdown("""
     **Como funciona:**
     1. Suba o arquivo CSV.
