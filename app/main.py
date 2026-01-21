@@ -53,12 +53,20 @@ with container:
             df = pd.read_csv(tmp_path, encoding=encoding_detectado, sep=delimitador_detectado)
             qtd_linhas, qtd_colunas = df.shape
 
-            st.write(f"**Arquivo carregado com sucesso!**")
-            st.write(f"- Número de linhas: {qtd_linhas}")
-            st.write(f"- Número de colunas: {qtd_colunas}")
-            st.write(f"- Encoding detectado: {encoding_detectado}")
-            st.write(f"- Delimitador detectado: '{delimitador_detectado}'")
+            with open("database/template.json", "r") as f:
+                template_validacao = json.load(f)
+            
+            resultado_validacao = validar_csv_completo(tmp_path, template_validacao)
+            print(resultado_validacao)
+            st.divider()
+            st.subheader("Estatísticas do Arquivo")
 
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Linhas", qtd_linhas)
+            m2.metric("Colunas", qtd_colunas)
+            m3.metric("Delimitador", f"{delimitador_detectado}")
+            m4.metric("Encoding", encoding_detectado)
+        
         except Exception as e:
             st.error(f"Erro ao processar o arquivo: {e}")
         
