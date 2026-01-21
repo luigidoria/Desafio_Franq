@@ -207,4 +207,4 @@ marimo/_lsp/
 __marimo__/
 
 # AI private Key
-# app/secrets.env
+app/secrets.env
