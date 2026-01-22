@@ -13,6 +13,7 @@ from src.validation import (
     detectar_delimitador,
     validar_csv_completo
 )
+from services.database import init_database
 
 from utils import formatar_titulo_erro
 
@@ -40,7 +41,9 @@ if "resultado_validacao" not in st.session_state:
     st.session_state["resultado_validacao"] = None
 if "nome_arquivo" not in st.session_state:
     st.session_state["nome_arquivo"] = None
-
+if "banco_dados" not in st.session_state:
+    init_database()
+    st.session_state["banco_dados"] = True
 
 st.title("Portal de Ingestão de Transações")
 st.divider()
