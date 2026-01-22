@@ -12,6 +12,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
                     
 from src.validation import validar_csv_completo
 from app.utils import formatar_titulo_erro
+from app.services.script_cache import gerar_hash_estrutura, buscar_script_cache, salvar_script_cache
+from app.services.database import init_database
 
 st.set_page_config(
     page_title="Franq | Correção IA",
@@ -83,49 +85,68 @@ st.divider()
 
 st.subheader("Gerando Script de Correção")
 
-with st.spinner("IA analisando os erros e gerando código de correção..."):
+# Gerar hash da estrutura do arquivo
+colunas_df = list(df.columns)
+hash_estrutura = gerar_hash_estrutura(colunas_df, resultado_validacao["detalhes"])
+
+# Verificar se já existe script no cache
+script_cache = buscar_script_cache(hash_estrutura)
+
+if script_cache:
+    # Script encontrado no cache
+    st.success(f"Script encontrado no cache! (Utilizado {script_cache['vezes_utilizado']} vezes)")
+    st.info("Economia: Chamada à IA evitada! Reutilizando script validado.")
+    codigo_correcao = script_cache["script"]
+    usou_cache = True
+else:
+    # Precisa gerar novo script com IA
+    st.info("Gerando novo script com IA...")
+    usou_cache = False
+
+with st.spinner("Processando..." if script_cache else "IA analisando os erros e gerando código de correção..."):
     try:
-        env_path = Path(__file__).parent.parent / "secrets.env"
-        load_dotenv(env_path)
-        GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+        if not script_cache:
+            # Só chama a IA se não encontrou no cache
+            env_path = Path(__file__).parent.parent / "secrets.env"
+            load_dotenv(env_path)
+            GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+            
+            if not GROQ_API_KEY:
+                st.error("API Key não encontrada! Configure o arquivo secrets.env")
+                st.stop()
+            
+            client = OpenAI(
+                base_url="https://api.groq.com/openai/v1",
+                api_key=GROQ_API_KEY
+            )
+            
+            # Carregar template para obter colunas válidas
+            with open("database/template.json", "r", encoding="utf-8") as f:
+                template = json.load(f)
+            
+            # Extrair colunas válidas (incluindo aliases)
+            colunas_validas = []
+            for nome_col, config in template["colunas"].items():
+                colunas_validas.append(nome_col)
+                colunas_validas.extend(config.get("aliases", []))
+            
+            colunas_obrigatorias = [
+                nome for nome, config in template["colunas"].items()
+                if config.get("obrigatorio", False)
+            ]
+            
+            colunas_opcionais = [
+                nome for nome, config in template["colunas"].items()
+                if not config.get("obrigatorio", False)
+            ]
+            
+            # Identificar tipos de erros presentes
+            tipos_erros = [erro.get("tipo") for erro in resultado_validacao["detalhes"]]
+            
+            erros_texto = json.dumps(resultado_validacao["detalhes"], indent=2, ensure_ascii=False)
+            sample_data = df.head(3).to_dict('records')
         
-        if not GROQ_API_KEY:
-            st.error("API Key não encontrada! Configure o arquivo secrets.env")
-            st.stop()
-        
-        client = OpenAI(
-            base_url="https://api.groq.com/openai/v1",
-            api_key=GROQ_API_KEY
-        )
-        
-        # Carregar template para obter colunas válidas
-        with open("database/template.json", "r", encoding="utf-8") as f:
-            template = json.load(f)
-        
-        # Extrair colunas válidas (incluindo aliases)
-        colunas_validas = []
-        for nome_col, config in template["colunas"].items():
-            colunas_validas.append(nome_col)
-            colunas_validas.extend(config.get("aliases", []))
-        
-        colunas_obrigatorias = [
-            nome for nome, config in template["colunas"].items()
-            if config.get("obrigatorio", False)
-        ]
-        
-        colunas_opcionais = [
-            nome for nome, config in template["colunas"].items()
-            if not config.get("obrigatorio", False)
-        ]
-        
-        # Identificar tipos de erros presentes
-        tipos_erros = [erro.get("tipo") for erro in resultado_validacao["detalhes"]]
-        
-        erros_texto = json.dumps(resultado_validacao["detalhes"], indent=2, ensure_ascii=False)
-        colunas_df = list(df.columns)
-        sample_data = df.head(3).to_dict('records')
-        
-        prompt = f"""
+            prompt = f"""
                 Você é um especialista em correção de dados com Python e Pandas.
 
                 Analise os seguintes erros detectados em um arquivo CSV:
@@ -182,31 +203,35 @@ with st.spinner("IA analisando os erros e gerando código de correção..."):
                 - Não use markdown code blocks (```), apenas o código puro
                 - Não importe pandas novamente, ele já está disponível como 'pd'
                 """
-        
-        chat_completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Você é um especialista em Python e Pandas. Gere apenas código limpo e funcional que modifique o DataFrame."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.3,
-            max_tokens=2048,
-        )
-        
-        codigo_correcao = chat_completion.choices[0].message.content
-        
-        codigo_correcao = codigo_correcao.replace("```python", "").replace("```", "").strip()
-        
-        st.success("Script de correção gerado com sucesso!")
+            
+            chat_completion = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Você é um especialista em Python e Pandas. Gere apenas código limpo e funcional que modifique o DataFrame."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.3,
+                max_tokens=2048,
+            )
+            
+            codigo_correcao = chat_completion.choices[0].message.content
+            codigo_correcao = codigo_correcao.replace("```python", "").replace("```", "").strip()
+            
+            # Salvar script no cache
+            salvar_script_cache(hash_estrutura, codigo_correcao, f"Corrige: {', '.join(tipos_erros)}")
+            
+            st.success("Script de correção gerado e salvo no cache!")
         
         st.divider()
         st.subheader("Código de Correção")
+        if usou_cache:
+            st.caption("Script recuperado do cache")
         st.code(codigo_correcao, language="python")
         
         st.divider()
