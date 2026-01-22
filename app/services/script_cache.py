@@ -26,23 +26,8 @@ def gerar_hash_estrutura(colunas: list, erros: list) -> str:
 
 
 def buscar_script_cache(hash_estrutura: str) -> Optional[dict]:
-    """
-    Busca um script de correção no cache pelo hash.
-    
-    Args:
-        hash_estrutura: Hash gerado pela função gerar_hash_estrutura()
-    
-    Returns:
-        dict com 'script' e 'id' se encontrado, None caso contrário
-        
-    Exemplo:
-        >>> script_info = buscar_script_cache("abc123def456")
-        >>> if script_info:
-        >>>     print(script_info['script'])
-    """
     db_path = Path(__file__).parent.parent.parent / "database" / "transacoes.db"
     
-    # Se o banco não existe, retorna None
     if not db_path.exists():
         return None
     
@@ -51,17 +36,53 @@ def buscar_script_cache(hash_estrutura: str) -> Optional[dict]:
     cursor = conn.cursor()
     
     cursor.execute(
-        "SELECT id, script_python FROM scripts_transformacao WHERE hash_estrutura = ?",
+        "SELECT id, script_python, vezes_utilizado FROM scripts_transformacao WHERE hash_estrutura = ?",
         (hash_estrutura,)
     )
     
     resultado = cursor.fetchone()
-    conn.close()
     
     if resultado:
-        return {
+        # Incrementar contador de uso e atualizar timestamp
+        cursor.execute(
+            """
+            UPDATE scripts_transformacao 
+            SET vezes_utilizado = vezes_utilizado + 1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (resultado["id"],)
+        )
+        conn.commit()
+        
+        script_info = {
             "id": resultado["id"],
-            "script": resultado["script_python"]
+            "script": resultado["script_python"],
+            "vezes_utilizado": resultado["vezes_utilizado"] + 1
         }
+        conn.close()
+        return script_info
     
+    conn.close()
     return None
+
+
+def salvar_script_cache(hash_estrutura: str, script: str, descricao: str = None) -> int:
+    db_path = Path(__file__).parent.parent.parent / "database" / "transacoes.db"
+    
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        """
+        INSERT INTO scripts_transformacao (hash_estrutura, script_python, descricao)
+        VALUES (?, ?, ?)
+        """,
+        (hash_estrutura, script, descricao)
+    )
+    
+    script_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    
+    return script_id
