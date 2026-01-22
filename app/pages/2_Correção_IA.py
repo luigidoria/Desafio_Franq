@@ -57,9 +57,6 @@ col3.metric("Status", "Necessita Correção")
 
 st.divider()
 
-if st.button("Voltar para a pagina de upload", type="primary"):
-    st.switch_page("main.py")
-
 st.subheader("Tipos de Erros Encontrados")
 
 for i, erro in enumerate(resultado_validacao["detalhes"]):
@@ -214,3 +211,14 @@ with st.spinner("IA analisando os erros e gerando código de correção..."):
 
     except Exception as e:
         st.error(f"Erro ao comunicar com a IA: {str(e)}")
+
+col1, col2, col3 = st.columns([1, 2, 1])
+with col1:
+    if st.button("Voltar para Upload", use_container_width=True):
+        st.switch_page("main.py")
+with col3:
+    if st.button("Limpar Dados", use_container_width=True):
+        for key in ["arquivo_erros", "df_original", "df_corrigido", "encoding", "delimitador"]:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.rerun()
