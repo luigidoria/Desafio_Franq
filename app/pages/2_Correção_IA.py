@@ -342,9 +342,3 @@ col1, col2, col3 = st.columns([1, 2, 1])
 with col1:
     if st.button("Voltar para Upload", use_container_width=True):
         st.switch_page("main.py")
-with col3:
-    if st.button("Limpar Dados", use_container_width=True):
-        for key in ["arquivo_erros", "df_original", "df_corrigido", "encoding", "delimitador"]:
-            if key in st.session_state:
-                del st.session_state[key]
-        st.rerun()
