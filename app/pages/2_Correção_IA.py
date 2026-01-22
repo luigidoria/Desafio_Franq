@@ -178,7 +178,11 @@ with st.spinner("Processando..." if script_cache else "IA analisando os erros e 
                    - Renomear colunas usando o mapeamento fornecido (use df.rename())
                 
                 4. SE houver erro "formato_data":
-                   - Converter a coluna de data para YYYY-MM-DD usando pd.to_datetime().dt.strftime('%Y-%m-%d')
+                   - Converter a coluna de data para YYYY-MM-DD
+                   - Use pd.to_datetime() com parâmetros flexíveis para detectar formato automaticamente
+                   - Exemplo: df['data_transacao'] = pd.to_datetime(df['data_transacao'], format='mixed', dayfirst=True).dt.strftime('%Y-%m-%d')
+                   - O parâmetro format='mixed' permite múltiplos formatos
+                   - O parâmetro dayfirst=True interpreta 17-01-2024 como dia-mês-ano
                    - SE NÃO houver este erro, NÃO ALTERE a coluna de data
                 
                 5. SE houver erro "formato_valor":
@@ -291,16 +295,24 @@ with st.spinner("Processando..." if script_cache else "IA analisando os erros e 
 
                         st.warning("Um novo ciclo de correção será necessário.")
                         
-                        if st.button("Solicitar Nova Correção via IA", type="secondary"):
-                            st.session_state["arquivo_erros"] = resultado_revalidacao
-                            st.session_state["df_original"] = df_corrigido
-                            st.rerun()
+                        col_a, col_b, col_c = st.columns([1, 2, 1])
+                        with col_b:
+                            if st.button("Solicitar Nova Correção via IA", type="secondary", use_container_width=True):
+                                st.session_state["arquivo_erros"] = resultado_revalidacao
+                                st.session_state["df_original"] = df_corrigido
+                                st.rerun()
                 
                 finally:
                     os.remove(tmp_path)
                 
             except Exception as e:
                 st.error(f"Erro ao executar: {str(e)}")
+                col_a, col_b, col_c = st.columns([1, 2, 1])
+                with col_b:
+                    if st.button("Solicitar Nova Correção via IA", type="secondary", use_container_width=True):
+                        st.session_state["arquivo_erros"] = resultado_revalidacao
+                        st.session_state["df_original"] = df_corrigido
+                        st.rerun()
         
     except Exception as e:
         st.error(f"Erro ao comunicar com a IA: {str(e)}")
