@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.validation import validar_csv_completo
 from app.utils import formatar_titulo_erro
 from app.services.script_cache import gerar_hash_estrutura, buscar_script_cache, salvar_script_cache
-from app.services.database import init_database
 
 st.set_page_config(
     page_title="Franq | Correção IA",
@@ -248,13 +247,18 @@ with st.spinner("Processando..." if script_cache else "IA analisando os erros e 
         
         st.divider()
         
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.warning("Revise o código antes de executar!")
-        with col2:
-            exec_button = st.button("Executar Código", type="primary", use_container_width=True)
+        # Se veio do cache, executar automaticamente
+        if usou_cache:
+            st.info("Executando script do cache automaticamente...")
+            executar_script = True
+        else:
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.warning("Revise o código antes de executar!")
+            with col2:
+                executar_script = st.button("Executar Código", type="primary", use_container_width=True)
    
-        if exec_button:
+        if executar_script:
             try:
                 df_corrigido = df.copy()
                 
@@ -294,14 +298,12 @@ with st.spinner("Processando..." if script_cache else "IA analisando os erros e 
                         
                         st.session_state["df_corrigido"] = df_corrigido
                         st.session_state["validacao_aprovada"] = True
-                        
-                        csv = df_corrigido.to_csv(index=False).encode('utf-8')
-
-
-                        if st.button("Inserir no Banco de Dados", type="primary", use_container_width=True):
-                            st.info("Funcionalidade de inserção no banco será implementada em breve.")
 
                     else:
+                        # Limpar validacao_aprovada se falhou
+                        if "validacao_aprovada" in st.session_state:
+                            del st.session_state["validacao_aprovada"]
+                        
                         st.error(f"Validação falhou! Ainda existem {resultado_revalidacao['total_erros']} erro(s).")
                         
                         st.subheader("Erros Restantes")
@@ -325,6 +327,10 @@ with st.spinner("Processando..." if script_cache else "IA analisando os erros e 
                     os.remove(tmp_path)
                 
             except Exception as e:
+                # Limpar validacao_aprovada se houver erro de execução
+                if "validacao_aprovada" in st.session_state:
+                    del st.session_state["validacao_aprovada"]
+                
                 st.error(f"Erro ao executar: {str(e)}")
                 col_a, col_b, col_c = st.columns([1, 2, 1])
                 with col_b:
@@ -335,6 +341,14 @@ with st.spinner("Processando..." if script_cache else "IA analisando os erros e 
         
     except Exception as e:
         st.error(f"Erro ao comunicar com a IA: {str(e)}")
+
+# Botão de navegação para inserção (só aparece se dados validados)
+if "validacao_aprovada" in st.session_state and st.session_state["validacao_aprovada"]:
+    col_nav1, col_nav2, col_nav3 = st.columns([1, 1, 1])
+    with col_nav2:
+        if st.button("Inserir no Banco de Dados", type="primary", use_container_width=True, key="nav_insert"):
+            st.switch_page("pages/3_Inserção_Banco.py")
+
 
 st.divider()
 

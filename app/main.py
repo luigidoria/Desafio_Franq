@@ -44,6 +44,8 @@ if "nome_arquivo" not in st.session_state:
 if "banco_dados" not in st.session_state:
     init_database()
     st.session_state["banco_dados"] = True
+if "sem_modficadoes_necessarias" not in st.session_state:
+    st.session_state["sem_modficadoes_necessarias"] = False
 
 st.title("Portal de Ingestão de Transações")
 st.divider()
@@ -71,6 +73,8 @@ with container:
     
         st.divider()
         st.subheader("Estatísticas do Arquivo")
+        
+        st.session_state["sem_modficadoes_necessarias"] = False
 
         if uploaded_file is not None:    
             with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp_file:
@@ -120,7 +124,12 @@ with container:
         st.subheader("Diagnóstico de Validação")
         if resultado_validacao["valido"]:
             st.success("O arquivo é válido e segue o padrão esperado!")
-            st.button("Iniciar Ingestão no Banco de Dados", type="primary")
+            button_insert = st.button("Iniciar Ingestão no Banco de Dados", type="primary")
+            if button_insert:
+                st.session_state["df_corrigido"] = df
+                st.session_state["validacao_aprovada"] = True
+                st.session_state["sem_modficadoes_necessarias"] = True
+                st.switch_page("pages/3_Inserção_Banco.py")
         else:
             
             st.error(f"O arquivo contém {resultado_validacao['total_erros']} divergência(s) que precisam ser corrigidas.")
