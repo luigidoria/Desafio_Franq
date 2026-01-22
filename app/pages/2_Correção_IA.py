@@ -24,6 +24,28 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("Correção Automática via IA")
+st.divider()
+
+if "arquivo_erros" not in st.session_state or "df_original" not in st.session_state:
+    st.warning("Nenhum arquivo com erros foi carregado!")
+    st.info("Por favor, volte para a página principal e faça o upload de um arquivo CSV.")
+    
+    if st.button("Voltar para Upload", type="primary"):
+        st.switch_page("main.py")
+    st.stop()
+
+resultado_validacao = st.session_state["arquivo_erros"]
+df = st.session_state["df_original"]
+
+st.subheader("Resumo dos Erros Detectados")
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Total de Erros", resultado_validacao["total_erros"])
+col2.metric("Linhas no Arquivo", len(df))
+col3.metric("Status", "Necessita Correção")
+
+st.divider()
 
 if st.button("Voltar para a pagina de upload", type="primary"):
     st.switch_page("main.py")
+
