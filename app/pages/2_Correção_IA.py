@@ -6,9 +6,11 @@ from pathlib import Path
 import sys
 import os
 from dotenv import load_dotenv
+import tempfile
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
+                    
+from src.validation import validar_csv_completo
 from app.utils import formatar_titulo_erro
 
 st.set_page_config(
@@ -208,9 +210,74 @@ with st.spinner("IA analisando os erros e gerando código de correção..."):
         st.code(codigo_correcao, language="python")
         
         st.divider()
+        
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.warning("Revise o código antes de executar!")
+        with col2:
+            exec_button = st.button("Executar Código", type="primary", use_container_width=True)
+   
+        if exec_button:
+            try:
+                df_corrigido = df.copy()
+                
+                namespace = {"df": df_corrigido, "pd": pd}
+                exec(codigo_correcao, namespace)
+                df_corrigido = namespace["df"]
+                
+                st.success("Código executado com sucesso!")
+                
+                st.subheader("Dados Corrigidos (10 primeiras linhas)")
+                st.dataframe(df_corrigido.head(10))
+                
+                st.divider()
 
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".csv", mode='w', encoding='utf-8', newline='') as tmp:
+                    df_corrigido.to_csv(tmp.name, index=False)
+                    tmp_path = tmp.name
+                
+                try:
+                    with open("database/template.json", "r") as f:
+                        template_validacao = json.load(f)
+                    
+                    resultado_revalidacao = validar_csv_completo(tmp_path, template_validacao)
+                    
+                    if resultado_revalidacao["valido"]:
+                        st.success("Validação concluída! O arquivo está correto e pronto para inserção no banco.")
+                        
+                        st.session_state["df_corrigido"] = df_corrigido
+                        st.session_state["validacao_aprovada"] = True
+                        
+                        csv = df_corrigido.to_csv(index=False).encode('utf-8')
+
+
+                        if st.button("Inserir no Banco de Dados", type="primary", use_container_width=True):
+                            st.info("Funcionalidade de inserção no banco será implementada em breve.")
+
+                    else:
+                        st.error(f"Validação falhou! Ainda existem {resultado_revalidacao['total_erros']} erro(s).")
+                        
+                        st.subheader("Erros Restantes")
+                        for i, erro in enumerate(resultado_revalidacao["detalhes"]):
+                            st.write(f"{i+1}. {formatar_titulo_erro(erro.get('tipo'))}")
+
+                        st.warning("Um novo ciclo de correção será necessário.")
+                        
+                        if st.button("Solicitar Nova Correção via IA", type="secondary"):
+                            st.session_state["arquivo_erros"] = resultado_revalidacao
+                            st.session_state["df_original"] = df_corrigido
+                            st.rerun()
+                
+                finally:
+                    os.remove(tmp_path)
+                
+            except Exception as e:
+                st.error(f"Erro ao executar: {str(e)}")
+        
     except Exception as e:
         st.error(f"Erro ao comunicar com a IA: {str(e)}")
+
+st.divider()
 
 col1, col2, col3 = st.columns([1, 2, 1])
 with col1:
