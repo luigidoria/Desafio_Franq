@@ -1,4 +1,5 @@
 import streamlit as st
+from app.utils import formatar_titulo_erro
 
 st.set_page_config(
     page_title="Franq | Correção IA",
@@ -49,3 +50,24 @@ st.divider()
 if st.button("Voltar para a pagina de upload", type="primary"):
     st.switch_page("main.py")
 
+st.subheader("Tipos de Erros Encontrados")
+
+for i, erro in enumerate(resultado_validacao["detalhes"]):
+    tipo_erro = erro.get("tipo")
+    st.write(f"**{i+1}.** {formatar_titulo_erro(tipo_erro)}")
+    
+    if tipo_erro == 'nomes_colunas':
+        mapeamento = erro.get("mapeamento", {})
+        if mapeamento:
+            st.caption(f"{len(mapeamento)} colunas com nomes diferentes")
+    elif tipo_erro == 'formato_valor':
+        formato = erro.get("formato_detectado", "Desconhecido")
+        st.caption(f"Formato detectado: {formato}")
+    elif tipo_erro == 'formato_data':
+        formato = erro.get("formato_detectado", "Desconhecido")
+        st.caption(f"Formato detectado: {formato}")
+    elif tipo_erro == 'colunas_faltando':
+        colunas = erro.get("colunas", [])
+        st.caption(f"Faltam {len(colunas)} colunas obrigatórias")
+
+st.divider()
