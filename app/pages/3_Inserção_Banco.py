@@ -189,7 +189,7 @@ if st.session_state.get("insercao_concluida", False):
             if key in st.session_state:
                 del st.session_state[key]
         
-        st.switch_page("app/pages/main.py")
+        st.switch_page("main.py")
 else:
     if st.button("Voltar para Início", use_container_width=True):
         st.switch_page("main.py")
