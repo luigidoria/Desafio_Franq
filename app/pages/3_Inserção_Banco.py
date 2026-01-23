@@ -71,11 +71,17 @@ if not st.session_state.get("insercao_concluida", False):
     
     st.divider()
 else:
-    st.success("Dados inseridos com sucesso no banco de dados!")
-    st.divider()
-    
     resultado = st.session_state.get("resultado_insercao", {})
     duracao = st.session_state.get("duracao_insercao", 0)
+    registros_inseridos = resultado.get("registros_inseridos", 0)
+    
+    # Só mostrar mensagem de sucesso se houve inserções
+    if registros_inseridos > 0:
+        st.success("Dados inseridos com sucesso no banco de dados!")
+    else:
+        st.warning("Nenhum registro foi inserido.")
+    
+    st.divider()
     
     st.subheader("Relatório de Inserção")
     
@@ -143,7 +149,7 @@ else:
                     }
                 )
         
-        if not erros_outros and erros_duplicados:
+        if not erros_outros and erros_duplicados and registros_inseridos > 0:
             st.success("Todos os novos registros foram inseridos com sucesso!")
     else:
         st.success("Todos os registros foram inseridos sem erros!")
