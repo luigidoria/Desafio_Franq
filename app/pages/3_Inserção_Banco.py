@@ -177,7 +177,19 @@ if not st.session_state.get("insercao_concluida", False):
 
 if st.session_state.get("insercao_concluida", False):
     if st.button("Voltar para Início", type="primary", use_container_width=True):
-        st.switch_page("main.py")
+        # Limpar todo o session_state para permitir novo upload
+        keys_to_clear = [
+            "df_original", "df_corrigido", "validacao_aprovada",
+            "resultado_validacao", "erros_validacao", "codigo_correcao_gerado",
+            "hash_atual", "usou_cache_flag", "resultado_insercao",
+            "duracao_insercao", "insercao_concluida", "confirmar_insercao",
+            "sem_modficadoes_necessarias"
+        ]
+        for key in keys_to_clear:
+            if key in st.session_state:
+                del st.session_state[key]
+        
+        st.switch_page("app/pages/main.py")
 else:
     if st.button("Voltar para Início", use_container_width=True):
         st.switch_page("main.py")
