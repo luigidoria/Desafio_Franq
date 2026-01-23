@@ -85,29 +85,33 @@ else:
     
     st.subheader("Relatório de Inserção")
     
-    # Verificar se há duplicados
     duplicados = resultado.get("registros_duplicados", 0)
     erros_count = len(resultado.get("erros", []))
     erros_nao_duplicados = sum(1 for e in resultado.get("erros", []) if "duplicado" not in e.get("erro", "").lower())
     
-    # Organizar métricas em 2 linhas para não cortar
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Total de Registros", resultado.get("total_registros", 0))
     with col2:
-        st.metric("Inseridos com Sucesso", resultado.get("registros_inseridos", 0), 
-                  delta_color="normal")
+        st.metric("Inseridos com Sucesso", registros_inseridos, delta_color="normal")
     with col3:
+        if duplicados > 0:
+            st.metric("Duplicados", duplicados)
+        elif erros_nao_duplicados > 0:
+            st.metric("Erros", erros_nao_duplicados)
+
+    col4, col5, col6 = st.columns(3)
+    with col4:
+        arquivo_nome = st.session_state.get("nome_arquivo", "N/A")
+        st.metric("Arquivo", arquivo_nome, label_visibility="visible")
+    with col5:
+        script_id = st.session_state.get("script_id_cache", None)
+        if script_id:
+            st.metric("Script IA", "Utilizado")
+        else:
+            st.metric("Script IA", "Não utilizado")
+    with col6:
         st.metric("Tempo de Execução", f"{duracao:.2f}s")
-    
-    if duplicados > 0 or erros_nao_duplicados > 0:
-        col4, col5, col6 = st.columns(3)
-        with col4:
-            if duplicados > 0:
-                st.metric("Duplicados Ignorados", duplicados, delta_color="off")
-        with col5:
-            if erros_nao_duplicados > 0:
-                st.metric("Erros", erros_nao_duplicados, delta_color="inverse")
     
     st.divider()
     
