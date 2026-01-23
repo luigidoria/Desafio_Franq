@@ -1,30 +1,72 @@
 import sqlite3
 import pandas as pd
+import json
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Any
+
+
+def carregar_template() -> Dict:
+    template_path = Path(__file__).parent.parent.parent / "database" / "template.json"
+    with open(template_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+def normalizar_status(valor: Any, template: Dict) -> str:
+    if pd.isna(valor) or valor is None:
+        return template['colunas']['status']['validacao'].get('default', 'PENDENTE')
+    
+    valor_normalizado = str(valor).upper().strip()
+    mapeamento = template['colunas']['status']['validacao']['mapeamento']
+    
+    mapeamento_upper = {k.upper(): v for k, v in mapeamento.items()}
+    valor_normalizado = mapeamento_upper.get(valor_normalizado, valor_normalizado)
+    
+    valores_permitidos = template['colunas']['status']['validacao']['valores_permitidos']
+    if valor_normalizado not in valores_permitidos:
+        return template['colunas']['status']['validacao'].get('default', 'PENDENTE')
+    
+    return valor_normalizado
+
+
+def normalizar_tipo(valor: Any, template: Dict) -> str:
+    if pd.isna(valor) or valor is None:
+        return ''
+    
+    valor_normalizado = str(valor).upper().strip()
+    mapeamento = template['colunas']['tipo']['validacao']['mapeamento']
+    
+    mapeamento_upper = {k.upper(): v for k, v in mapeamento.items()}
+    return mapeamento_upper.get(valor_normalizado, valor_normalizado)
+
+
+def normalizar_categoria(valor: Any, template: Dict) -> str:
+    if pd.isna(valor) or valor is None:
+        return ''
+    
+    valor_normalizado = str(valor).upper().strip()
+    mapeamento = template['colunas']['categoria']['validacao']['mapeamento']
+    
+    mapeamento_upper = {k.upper(): v for k, v in mapeamento.items()}
+    return mapeamento_upper.get(valor_normalizado, valor_normalizado)
 
 
 def inserir_transacoes(df: pd.DataFrame) -> Dict:
     db_path = Path(__file__).parent.parent.parent / "database" / "transacoes.db"
     
     try:
+        template = carregar_template()
+        
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         registros_inseridos = 0
         erros = []
         
-        # Inserir cada linha
         for index, row in df.iterrows():
             try:
-                # Normalizar status
-                status = row.get('status', 'PENDENTE')
-                if pd.isna(status) or status is None:
-                    status = 'PENDENTE'
-                else:
-                    status = str(status).upper().strip()
-                    if status not in ('PENDENTE', 'CONCLUIDA', 'CANCELADA'):
-                        status = 'PENDENTE'
+                status = normalizar_status(row.get('status'), template)
+                tipo = normalizar_tipo(row.get('tipo'), template)
+                categoria = normalizar_categoria(row.get('categoria'), template)
                 
                 cursor.execute(
                     """
@@ -37,8 +79,8 @@ def inserir_transacoes(df: pd.DataFrame) -> Dict:
                         row['id_transacao'],
                         row['data_transacao'],
                         row['valor'],
-                        row['tipo'],
-                        row['categoria'],
+                        tipo,
+                        categoria,
                         row.get('descricao', None),
                         row['conta_origem'],
                         row.get('conta_destino', None),
