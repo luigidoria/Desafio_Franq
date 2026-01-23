@@ -33,7 +33,7 @@ def inserir_transacoes(df: pd.DataFrame) -> Dict:
                         row.get('descricao', None),
                         row['conta_origem'],
                         row.get('conta_destino', None),
-                        row['status'] if row['status'] in ('pendente', 'concluida', 'cancelada') else 'pendente'
+                        row['status'] if row['status'].lower() in ('pendente', 'concluida', 'cancelada') else 'PENDENTE'
                     )
                 )
                 registros_inseridos += 1
