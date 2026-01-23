@@ -47,6 +47,9 @@ if "arquivo_erros" not in st.session_state or "df_original" not in st.session_st
         st.switch_page("main.py")
     st.stop()
 
+if "vezes_utilizado" not in st.session_state:
+    st.session_state["vezes_utilizado"] = 0
+
 resultado_validacao = st.session_state["arquivo_erros"]
 df = st.session_state["df_original"]
 
@@ -92,7 +95,8 @@ if "codigo_gerado" not in st.session_state:
             st.session_state["codigo_gerado"] = codigo_correcao
             st.session_state["usou_cache"] = usou_cache
             st.session_state["hash_estrutura"] = hash_estrutura
-            
+            st.session_state["vezes_utilizado"] = vezes_utilizado
+
             if usou_cache:
                 st.session_state["script_id_cache"] = script_id_cache
                 st.session_state["vezes_utilizado"] = vezes_utilizado
@@ -109,7 +113,7 @@ else:
     hash_estrutura = st.session_state.get("hash_estrutura")
     
     if usou_cache:
-        st.success("Script recuperado do cache!")
+        st.success(f"Script recuperado do cache! Usado {st.session_state.get('vezes_utilizado', 0)} vezes.")
 
 st.divider()
 st.subheader("Código de Correção")
