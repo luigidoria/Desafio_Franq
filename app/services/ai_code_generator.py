@@ -150,7 +150,7 @@ def gerar_codigo_correcao_ia(df, resultado_validacao):
                 "content": prompt
             }
         ],
-        temperature=0.5,
+        temperature=0.3,
         max_tokens=2048,
     )
     
