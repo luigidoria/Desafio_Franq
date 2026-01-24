@@ -57,6 +57,11 @@ def rest_all_states():
         if key != "banco_dados":
             st.session_state[key] = value
 
+@st.cache_data
+def carregar_template():
+    with open("database/template.json", "r") as f:
+        return json.load(f)
+
 st.title("Portal de Ingestão de Transações")
 st.divider()
 
@@ -98,8 +103,7 @@ with container:
                 df = pd.read_csv(tmp_path, encoding=encoding_detectado, sep=delimitador_detectado)
                 qtd_linhas, qtd_colunas = df.shape
 
-                with open("database/template.json", "r") as f:
-                    template_validacao = json.load(f)
+                template_validacao = carregar_template()
                 
                 resultado_validacao = validar_csv_completo(tmp_path, template_validacao)
 
