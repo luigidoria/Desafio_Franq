@@ -55,7 +55,7 @@ with st.sidebar:
     """)
 
     st.divider()
-    if st.button("Ver Dashboard", use_container_width=True):
+    if st.button("Ver Dashboard", width='stretch'):
         st.session_state["pagina_anterior"] = "main.py"
         st.switch_page("pages/4_Dashboard.py")
     

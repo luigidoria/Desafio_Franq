@@ -1,8 +1,14 @@
 import streamlit as st
 from pathlib import Path
 import sys
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import altair as alt
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from app.services.logger import carregar_dados
 
 st.set_page_config(
     page_title="Franq | Dashboard",
@@ -40,6 +46,5 @@ with st.sidebar:
     else:
         texto_botao = "Voltar"
 
-    if st.button(texto_botao, use_container_width=True):
+    if st.button(texto_botao, width='stretch'):
         st.switch_page(origem_atual)
-    

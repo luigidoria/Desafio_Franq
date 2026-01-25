@@ -3,6 +3,7 @@ import hashlib
 import streamlit as st
 from datetime import datetime
 from pathlib import Path
+import pandas as pd
 
 DB_PATH = Path(__file__).parent.parent.parent / "database" / "transacoes.db"
 
@@ -140,3 +141,25 @@ def registrar_conclusao(inseridos, duplicados, erros):
         salvar_log_no_banco(log)
         
         del st.session_state["log_atual"]
+
+def carregar_dados():
+    """Lê os dados brutos do SQLite"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        query = """
+            SELECT 
+                id, arquivo_nome, origem_correcao, tokens_gastos, tentativas_ia,
+                registros_inseridos, registros_duplicados, status, 
+                etapa_final, tipo_erro, duracao_segundos, created_at
+            FROM monitoramento_processamento
+            ORDER BY created_at DESC
+        """
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        
+        # Converter string de data para datetime
+        df['created_at'] = pd.to_datetime(df['created_at'])
+        return df
+    except Exception as e:
+        st.error(f"Erro ao conectar no banco: {e}")
+        return pd.DataFrame()
