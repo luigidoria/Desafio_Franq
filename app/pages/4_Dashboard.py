@@ -151,3 +151,30 @@ with col_graf4:
         st.bar_chart(df_erros, horizontal=True, color="#FF6B6B")
     else:
         st.success("Nenhum erro registrado!")
+
+
+st.divider()
+st.subheader("Histórico Detalhado")
+
+filtro_status = st.multiselect(
+    "Filtrar Status:", 
+    options=df['status'].unique(),
+    default=df['status'].unique()
+)
+
+df_filtrado = df[df['status'].isin(filtro_status)]
+
+st.dataframe(
+    df_filtrado[[
+        'created_at', 'arquivo_nome', 'status', 'origem_correcao', 
+        'tokens_gastos', 'tentativas_ia', 'registros_inseridos'
+    ]],
+    width='stretch',
+    hide_index=True,
+    column_config={
+        "created_at": st.column_config.DatetimeColumn("Data", format="DD/MM HH:mm"),
+        "tokens_gastos": st.column_config.NumberColumn("Tokens"),
+        "tentativas_ia": st.column_config.NumberColumn("Tentativas"),
+        "status": st.column_config.Column("Status")
+    }
+)
