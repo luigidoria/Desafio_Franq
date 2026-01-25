@@ -82,3 +82,72 @@ with kpi3:
     st.metric("Uso do Cache", f"{qtd_cache}", delta=f"{taxa_cache:.1f}% do Total")
 with kpi4:
     st.metric("Tokens Economizados (Est.)", f"{tokens_economizados:,.0f}".replace(",", "."))
+
+st.divider()
+
+col_graf1, col_graf2 = st.columns([1, 1])
+
+with col_graf1:
+    st.subheader("IA vs Cache")
+    df_origem = df['origem_correcao'].value_counts().reset_index()
+    df_origem.columns = ['Origem', 'Total']
+    
+    fig_pizza = px.pie(
+        df_origem, 
+        values='Total', 
+        names='Origem', 
+        hole=0.4,
+        color='Origem',
+        color_discrete_map={'IA': '#FF6B6B', 'CACHE': '#4ECDC4', 'NENHUMA': '#FFE66D'}
+    )
+    st.plotly_chart(fig_pizza, width='stretch')
+
+with col_graf2:
+    st.subheader("Consumo Diário")
+    df['data'] = df['created_at'].dt.date
+    df_diario = df.groupby('data')['tokens_gastos'].sum()
+    
+    st.bar_chart(df_diario, color="#4ECDC4")
+
+col_graf3, col_graf4 = st.columns([1, 1])
+
+with col_graf3:
+    st.subheader("Tentativas da IA")
+    st.caption("Frequência de tentativas necessárias por arquivo")
+    
+    df_ia = df[df['origem_correcao'] == 'IA']
+    
+    if not df_ia.empty:
+        contagem = df_ia['tentativas_ia'].value_counts().reset_index()
+        contagem.columns = ['Tentativas', 'Quantidade']
+        
+        fig = px.bar(
+            contagem, 
+            x='Tentativas', 
+            y='Quantidade',
+            text_auto=True,
+            color_discrete_sequence=['#FF9F43']
+        )
+        
+        fig.update_layout(
+            xaxis=dict(
+                tickmode='linear',
+                tick0=1,
+                dtick=1
+            ),
+            bargap=0.2
+        )
+        
+        fig.update_traces(width=0.3)         
+        st.plotly_chart(fig, width='stretch')
+    else:
+        st.info("Sem dados de uso de IA para gerar histograma.")
+
+with col_graf4:
+    st.subheader("Registros de Erros")
+    df_erros = df[df['status'] == 'FALHA']['tipo_erro'].value_counts()
+    
+    if not df_erros.empty:
+        st.bar_chart(df_erros, horizontal=True, color="#FF6B6B")
+    else:
+        st.success("Nenhum erro registrado!")
