@@ -2,8 +2,11 @@ import streamlit as st
 
 def rest_all_states(state_padroes):
     db_status = st.session_state.get("banco_dados", False)
+    log_pendente = st.session_state.get("log_atual", None)
     st.session_state.clear()
     st.session_state["banco_dados"] = db_status
+    if log_pendente:
+        st.session_state["log_atual"] = log_pendente
     for key, value in state_padroes.items():
         if key != "banco_dados":
             st.session_state[key] = value
