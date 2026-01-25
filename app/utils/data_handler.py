@@ -1,36 +1,17 @@
 import streamlit as st
 import pandas as pd
-import os
 import tempfile
 import json
+import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.validation import (
     detectar_encoding,
     detectar_delimitador,
     validar_csv_completo
 )
-
-
-def formatar_titulo_erro(tipo_erro):
-    titulos = {
-        'nomes_colunas': 'Nomes das Colunas Incorretos',
-        'formato_valor': 'Formato de Valor Monetário Inválido',
-        'formato_data': 'Formato de Data Inválido',
-        'colunas_faltando': 'Colunas Obrigatórias Ausentes'
-    }
-    return titulos.get(tipo_erro, 'Erro de Validação')
-
-def rest_all_states(state_padroes):
-    db_status = st.session_state.get("banco_dados", False)
-    st.session_state.clear()
-    st.session_state["banco_dados"] = db_status
-    for key, value in state_padroes.items():
-        if key != "banco_dados":
-            st.session_state[key] = value
 
 @st.cache_data
 def carregar_template():
