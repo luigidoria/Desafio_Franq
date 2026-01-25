@@ -22,7 +22,8 @@ def gerar_codigo_correcao_ia(df, resultado_validacao):
             True,
             hash_estrutura,
             script_cache["id"],
-            script_cache["vezes_utilizado"]
+            script_cache["vezes_utilizado"],
+            0
         )
     
     env_path = Path(__file__).parent.parent / "secrets.env"
@@ -154,16 +155,21 @@ def gerar_codigo_correcao_ia(df, resultado_validacao):
         temperature=0.3,
         max_tokens=2048,
     )
-    
+
+    tokens_gastos = 0
     codigo_correcao = chat_completion.choices[0].message.content
     codigo_correcao = codigo_correcao.replace("```python", "").replace("```", "").strip()
+
+    if hasattr(chat_completion, 'usage') and chat_completion.usage:
+        tokens_gastos = chat_completion.usage.total_tokens
     
     return (
         codigo_correcao,
         False,  
         hash_estrutura,
         None,
-        0
+        0,
+        tokens_gastos
     )
 
 def new_correction(codigo_correcao, resultado_revalidacao, df_corrigido):

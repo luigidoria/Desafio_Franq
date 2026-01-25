@@ -13,6 +13,7 @@ from app.utils.ui_components import formatar_titulo_erro
 from app.services.script_cache import salvar_script_cache
 from app.services.ai_code_generator import gerar_codigo_correcao_ia, new_correction
 from app.utils.data_handler import carregar_template
+from app.services.logger import atualizar_uso_ia, registrar_erro   
 
 st.set_page_config(
     page_title="Franq | Correção IA",
@@ -91,7 +92,8 @@ if "codigo_gerado" not in st.session_state:
     st.info("Gerando script de correção...")
     with st.spinner("IA analisando os erros e gerando código de correção..."):
         try:
-            codigo_correcao, usou_cache, hash_estrutura, script_id_cache, vezes_utilizado = gerar_codigo_correcao_ia(df, resultado_validacao)
+            codigo_correcao, usou_cache, hash_estrutura, script_id_cache, vezes_utilizado, tokens_gastos = gerar_codigo_correcao_ia(df, resultado_validacao)
+            atualizar_uso_ia(tokens=tokens_gastos, usou_ia=(not usou_cache))
             
             st.session_state["codigo_gerado"] = codigo_correcao
             st.session_state["usou_cache"] = usou_cache
@@ -106,6 +108,7 @@ if "codigo_gerado" not in st.session_state:
                 st.success("Script de correção gerado com sucesso!")
                 
         except Exception as e:
+            registrar_erro("GERACAO_SCRIPT", "Erro API IA", str(e))
             st.error(f"Erro ao gerar código: {str(e)}")
             st.stop()
 else:
