@@ -93,7 +93,9 @@ if "codigo_gerado" not in st.session_state:
     with st.spinner("IA analisando os erros e gerando código de correção..."):
         try:
             codigo_correcao, usou_cache, hash_estrutura, script_id_cache, vezes_utilizado, tokens_gastos = gerar_codigo_correcao_ia(df, resultado_validacao)
-            atualizar_uso_ia(tokens=tokens_gastos, usou_ia=(not usou_cache))
+
+            fonte = "CACHE" if usou_cache else "IA"
+            atualizar_uso_ia(tokens=tokens_gastos, fonte=fonte)
             
             st.session_state["codigo_gerado"] = codigo_correcao
             st.session_state["usou_cache"] = usou_cache

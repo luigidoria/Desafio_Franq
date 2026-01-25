@@ -67,6 +67,7 @@ if not st.session_state.get("insercao_concluida", False):
                 arquivo_nome = st.session_state.get("nome_arquivo", "unknown.csv")
                 script_id = st.session_state.get("script_id_cache")
                 
+                total_sucesso = resultado.get("registros_inseridos", 0)
                 total_erros_geral = len(resultado.get("erros", []))
                 erros_duplicados = resultado.get("registros_duplicados", 0)
                 erros_reais = total_erros_geral - erros_duplicados
@@ -74,14 +75,14 @@ if not st.session_state.get("insercao_concluida", False):
                 registrar_log_ingestao(
                     arquivo_nome=arquivo_nome,
                     registros_total=resultado.get("total_registros", 0),
-                    registros_sucesso=resultado.get("registros_inseridos", 0),
+                    registros_sucesso=total_sucesso,
                     registros_erro=erros_reais,
                     usou_ia=(script_id is not None),
                     script_id=script_id,
                     duracao_segundos=duracao
                 )
 
-                registrar_conclusao()
+                registrar_conclusao(total_sucesso, erros_duplicados, erros_reais)
                 
                 status.update(label="Processo concluído!", state="complete", expanded=False)
                 
@@ -91,7 +92,7 @@ if not st.session_state.get("insercao_concluida", False):
                 st.rerun()
 
             except Exception as e:
-                registrar_conclusao()
+                registrar_erro("INSERCAO_DADOS", "Erro Inserção", str(e))
                 status.update(label="Erro crítico!", state="error")
                 st.error(f"Falha na inserção: {str(e)}")
                 st.stop()

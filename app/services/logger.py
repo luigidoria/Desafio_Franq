@@ -16,8 +16,12 @@ def init_logger_table():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 arquivo_hash TEXT NOT NULL,
                 arquivo_nome TEXT NOT NULL,
-                usou_ia BOOLEAN DEFAULT FALSE,
+                origem_correcao TEXT CHECK (origem_correcao IN ('IA', 'CACHE', 'NENHUMA')),
                 tokens_gastos INTEGER DEFAULT 0,
+                tentativas_ia INTEGER DEFAULT 0,
+                registros_inseridos INTEGER DEFAULT 0,
+                registros_duplicados INTEGER DEFAULT 0,
+                registros_erros INTEGER DEFAULT 0,       
                 status TEXT NOT NULL CHECK (status IN ('CONCLUIDO', 'FALHA', 'INTERROMPIDO')),
                 etapa_final TEXT,
                 tipo_erro TEXT,
@@ -47,14 +51,19 @@ def salvar_log_no_banco(dados_log):
         
         cursor.execute("""
             INSERT INTO monitoramento_processamento 
-            (arquivo_hash, arquivo_nome, usou_ia, tokens_gastos, status, 
+            (arquivo_hash, arquivo_nome, origem_correcao, tokens_gastos, tentativas_ia,
+             registros_inseridos, registros_duplicados, registros_erros, status, 
              etapa_final, tipo_erro, mensagem_erro, duracao_segundos)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             dados_log.get("hash"),
             dados_log.get("nome"),
-            dados_log.get("usou_ia", False),
+            dados_log.get("origem_correcao", "NENHUMA"),
             dados_log.get("tokens", 0),
+            dados_log.get("tentativas_ia", 0),
+            dados_log.get("inseridos", 0),      
+            dados_log.get("duplicados", 0),  
+            dados_log.get("erros", 0),       
             dados_log.get("status"),
             dados_log.get("etapa"),
             dados_log.get("tipo_erro"),
@@ -67,12 +76,14 @@ def salvar_log_no_banco(dados_log):
     except Exception as e:
         print(f"Erro ao salvar log no banco: {e}")
 
-def atualizar_uso_ia(tokens, usou_ia=True):
+def atualizar_uso_ia(tokens, fonte):
     if "log_atual" in st.session_state:
         log = st.session_state["log_atual"]
         log["tokens"] = log.get("tokens", 0) + tokens
-        log["usou_ia"] = usou_ia
+        log["origem_correcao"] = fonte
         log["etapa"] = "GERACAO_SCRIPT"
+        if fonte == 'IA':
+                log["tentativas_ia"] = log.get("tentativas_ia", 0) + 1
 
 def iniciar_monitoramento(uploaded_file):
     if "log_atual" in st.session_state:
@@ -91,9 +102,13 @@ def iniciar_monitoramento(uploaded_file):
         "hash": arquivo_hash,
         "nome": uploaded_file.name,
         "inicio": datetime.now(),
-        "usou_ia": False,
+        "origem_correcao": "NENHUMA", # Assume que está limpo até provar o contrário
         "tokens": 0,
-        "etapa": "UPLOAD",      
+        "tentativas_ia": 0,
+        "inseridos": 0,
+        "duplicados": 0,
+        "erros": 0,
+        "etapa": "UPLOAD",
         "status": "PROCESSANDO",
         "tipo_erro": None,
         "mensagem_erro": None
@@ -112,11 +127,14 @@ def registrar_erro(etapa, tipo_erro, mensagem_erro):
         
         del st.session_state["log_atual"]
 
-def registrar_conclusao():
+def registrar_conclusao(inseridos, duplicados, erros):
     if "log_atual" in st.session_state:
         log = st.session_state["log_atual"]
         log["etapa"] = "INGESTAO"
         log["status"] = "CONCLUIDO"
+        log["inseridos"] = inseridos      
+        log["duplicados"] = duplicados
+        log["erros"] = erros     
         log["duracao"] = (datetime.now() - log["inicio"]).total_seconds()
         
         salvar_log_no_banco(log)
