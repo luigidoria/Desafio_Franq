@@ -66,3 +66,10 @@ def salvar_log_no_banco(dados_log):
         conn.close()
     except Exception as e:
         print(f"Erro ao salvar log no banco: {e}")
+
+def atualizar_uso_ia(tokens, usou_ia=True):
+    if "log_atual" in st.session_state:
+        log = st.session_state["log_atual"]
+        log["tokens"] = log.get("tokens", 0) + tokens
+        log["usou_ia"] = usou_ia
+        log["etapa"] = "GERACAO_SCRIPT"
