@@ -3,8 +3,6 @@ from pathlib import Path
 import sys
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
-import altair as alt
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
