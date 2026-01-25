@@ -35,3 +35,6 @@ def init_logger_table():
         conn.close()
     except Exception as e:
         print(f"Erro ao inicializar tabela de logs: {e}")
+
+def calcular_hash(bytes_arquivo):
+    return hashlib.sha256(bytes_arquivo).hexdigest()
