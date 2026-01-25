@@ -6,6 +6,7 @@ from services.database import init_database
 from utils.ui_components import formatar_titulo_erro
 from utils.session_manager import rest_all_states
 from utils.data_handler import processar_arquivo
+from services.logger import init_logger_table, iniciar_monitoramento
 
 st.set_page_config(
     page_title="Franq | Ingestão de Dados",
@@ -37,6 +38,7 @@ for key, value in state_padroes.items():
 
 if not st.session_state["banco_dados"]:
     init_database()
+    init_logger_table()
     st.session_state["banco_dados"] = True
 
 
@@ -71,6 +73,7 @@ with container:
 
         if uploaded_file is not None:
             if st.session_state["df"] is None:    
+                iniciar_monitoramento(uploaded_file)
                 try:
                     df, encoding_detectado, delimitador_detectado, resultado_validacao = processar_arquivo(uploaded_file)
 
