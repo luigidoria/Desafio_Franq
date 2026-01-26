@@ -9,6 +9,46 @@ from app.services.script_cache import gerar_hash_estrutura, buscar_script_cache
 from app.utils.data_handler import carregar_template
 from app.utils.ui_components import formatar_titulo_erro
 
+def _construir_instrucoes_dinamicas(detalhes_erros):
+    instrucoes = []
+    
+    for erro in detalhes_erros:
+        tipo = erro.get("tipo")
+        
+        if tipo == "colunas_faltando":
+            cols = erro.get("colunas", [])
+            cols_str = ", ".join([f"'{c}'" for c in cols])
+            instrucoes.append(
+                f"CRITICO - COLUNAS FALTANDO: O DataFrame NAO possui as colunas obrigatorias [{cols_str}]. "
+                f"Voce DEVE cria-las explicitamente. Preencha com None (objeto Python nativo) para garantir compatibilidade com SQL. NAO use pd.NA."
+            )
+            
+        elif tipo == "nomes_colunas":
+            mapeamento = erro.get("mapeamento", {})
+            if mapeamento:
+                instrucoes.append(
+                    f"RENOMEACAO: As colunas estao incorretas. Use examente este mapeamento no rename: {json.dumps(mapeamento)}."
+                )
+
+        elif tipo == "formato_valor":
+            instrucoes.append(
+                "FORMATACAO DE VALOR: Identifique colunas monetarias (ex: com 'R$', pontos de milhar). "
+                "Converta para float: remova 'R$', remova pontos, substitua virgula por ponto."
+            )
+            
+        elif tipo == "formato_data":
+            instrucoes.append(
+                "FORMATACAO DE DATA: Converta colunas de data para datetime e depois para string 'YYYY-MM-DD'. "
+                "Use pd.to_datetime(..., dayfirst=True, errors='coerce')."
+            )
+            
+        elif tipo == "duplicatas":
+            instrucoes.append("DUPLICATAS: Remova linhas duplicadas mantendo a primeira ocorrencia (df.drop_duplicates()).")
+
+    if not instrucoes:
+        instrucoes.append("Analise os dados e aplique as correcoes necessarias para adequar ao schema.")
+        
+    return "\n".join([f"{i+1}. {inst}" for i, inst in enumerate(instrucoes)])
 
 def gerar_codigo_correcao_ia(df, resultado_validacao):
     colunas_df = list(df.columns)
@@ -41,119 +81,60 @@ def gerar_codigo_correcao_ia(df, resultado_validacao):
     
     template = carregar_template()
     
-    colunas_validas = []
-    for nome_col, config in template["colunas"].items():
-        colunas_validas.append(nome_col)
-        colunas_validas.extend(config.get("aliases", []))
+    instrucoes_especificas = _construir_instrucoes_dinamicas(resultado_validacao["detalhes"])
     
-    colunas_obrigatorias = [
-        nome for nome, config in template["colunas"].items()
-        if config.get("obrigatorio", False)
-    ]
-    
-    colunas_opcionais = [
-        nome for nome, config in template["colunas"].items()
-        if not config.get("obrigatorio", False)
-    ]
-    
-    erros_texto = json.dumps(resultado_validacao["detalhes"], indent=2, ensure_ascii=False)
     sample_data = df.head(3).to_dict('records')
+    dtypes_info = df.dtypes.to_string()
     
-    # Importar streamlit apenas para acessar session_state
     historico_tentativas = ""
     if "script_anterior" in st.session_state and "erro_anterior" in st.session_state:
         historico_tentativas = f"""
-        **ATENÇÃO - TENTATIVA ANTERIOR FALHOU:**
-        
-        O script abaixo foi gerado anteriormente mas causou erro na validação:
-        
-        ```python
-        {st.session_state['script_anterior']}
-        ```
-        
-        **Erro que ocorreu:**
+        TENTATIVA ANTERIOR FALHOU COM O ERRO:
         {st.session_state['erro_anterior']}
         
-        **IMPORTANTE:** NÃO repita o mesmo erro! Analise o que deu errado e corrija a abordagem.
+        CODIGO QUE FALHOU:
+        {st.session_state['script_anterior']}
         """
 
     prompt = f"""
-        Você é um especialista em correção de dados com Python e Pandas.
+    Voce e um Engenheiro de Dados Senior especialista em Pandas.
+    Sua tarefa e gerar um script Python para corrigir um DataFrame chamado `df`.
 
-        Analise os seguintes erros detectados em um arquivo CSV:
-        
-        {historico_tentativas}
+    CONTEXTO DOS DADOS:
+    - Colunas Atuais: {colunas_df}
+    - Tipos de Dados (dtypes):
+    {dtypes_info}
+    - Amostra (head 3):
+    {json.dumps(sample_data, indent=2, ensure_ascii=False)}
 
-        **Erros Detectados:**
-        {erros_texto}
+    {historico_tentativas}
 
-        **Colunas Atuais no DataFrame:**
-        {colunas_df}
+    LISTA DE TAREFAS OBRIGATORIAS (Baseada nos erros detectados):
+    {instrucoes_especificas}
 
-        **Colunas Válidas do Banco de Dados:**
-        - Obrigatórias: {colunas_obrigatorias}
-        - Opcionais: {colunas_opcionais}
-        - Todos os aliases aceitos: {colunas_validas}
+    REGRAS GERAIS:
+    1. Sempre remova colunas extras que nao estejam no template: {list(template["colunas"].keys())}.
+    2. O codigo deve assumir que 'df' e 'pd' ja existem.
+    3. NAO use blocos markdown (```python). Retorne apenas o codigo.
+    4. Se precisar de regex, importe 're'. Se precisar de numpy, importe 'numpy as np'.
+    5. A saida final deve ser a alteracao do dataframe `df`.
 
-        **Amostra dos Dados (3 primeiras linhas):**
-        {json.dumps(sample_data, indent=2, ensure_ascii=False)}
-
-        **Tarefa:**
-        Gere um script Python que corrija APENAS os erros listados acima. Siga estas regras:
-        
-        **SEMPRE EXECUTAR (independente dos erros):**
-        1. Remover colunas EXTRAS (que não estão na lista de colunas válidas)
-        2. Remover colunas DUPLICADAS (manter apenas a primeira ocorrência)
-        
-        **CORRIGIR APENAS SE O ERRO FOI DETECTADO:**
-        
-        3. SE houver erro "nomes_colunas":
-           - Renomear colunas usando o mapeamento fornecido (use df.rename())
-        
-        4. SE houver erro "formato_data":
-           - Converter a coluna de data para YYYY-MM-DD
-           - Use pd.to_datetime() com parâmetros flexíveis para detectar formato automaticamente
-           - Exemplo: df['data_transacao'] = pd.to_datetime(df['data_transacao'], format='mixed', dayfirst=True).dt.strftime('%Y-%m-%d')
-           - O parâmetro format='mixed' permite múltiplos formatos
-           - O parâmetro dayfirst=True interpreta 17-01-2024 como dia-mês-ano
-           - SE NÃO houver este erro, NÃO ALTERE a coluna de data
-        
-        5. SE houver erro "formato_valor":
-           - Converter valores monetários: remover R$, pontos de milhares, trocar vírgula por ponto
-           - Usar: df['valor'].astype(str).str.replace('R$', '', regex=False).str.strip().str.replace('.', '', regex=False).str.replace(',', '.').astype(float)
-           - SE NÃO houver este erro, NÃO ALTERE a coluna de valores
-        
-        6. SE houver erro "colunas_faltando":
-           - Adicionar colunas obrigatórias faltantes com None
-
-        **CRÍTICO:**
-        - NÃO converta formatos que já estão corretos
-        - NÃO altere colunas que não têm erros reportados
-        - Corrija SOMENTE o que está listado nos erros detectados
-        - SEMPRE remova colunas extras e duplicadas (isso é obrigatório)
-
-        **IMPORTANTE:**
-        - Retorne APENAS o código Python, sem explicações ou comentários
-        - O código receberá uma variável chamada 'df' que já contém os dados carregados
-        - Use 'df = df.operacao()' para que as modificações sejam salvas
-        - Não use print() no final
-        - Não use markdown code blocks (```), apenas o código puro
-        - Não importe pandas novamente, ele já está disponível como 'pd'
-        """
+    Gere apenas o codigo Python:
+    """
     
     chat_completion = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
             {
                 "role": "system",
-                "content": "Você é um especialista em Python e Pandas. Gere apenas código limpo e funcional que modifique o DataFrame."
+                "content": "Voce gera apenas codigo Python puro, sem formatacao Markdown."
             },
             {
                 "role": "user",
                 "content": prompt
             }
         ],
-        temperature=0.3,
+        temperature=0.1,
         max_tokens=4096,
     )
 
