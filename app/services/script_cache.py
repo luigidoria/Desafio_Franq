@@ -1,6 +1,4 @@
-"""
-Módulo para cache de scripts de correção baseado em similaridade.
-"""
+import streamlit as st
 import hashlib
 import json
 import sqlite3
@@ -126,7 +124,7 @@ def salvar_script_cache(hash_estrutura: str, script: str, descricao: str = None,
         conn.commit()
         return script_id
     except Exception as e:
-        print(f"Erro ao salvar script: {e}")
+        st.error(f"Erro ao salvar script: {e}")
         return None
     finally:
         conn.close()

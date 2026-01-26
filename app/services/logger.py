@@ -1,3 +1,4 @@
+import streamlit as st
 import sqlite3
 import hashlib
 import streamlit as st
@@ -40,7 +41,7 @@ def init_logger_table():
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"Erro ao inicializar tabela de logs: {e}")
+        st.error(f"Erro ao inicializar tabela de logs: {e}")
 
 def carregar_dados():
     try:
@@ -190,4 +191,4 @@ class LogMonitoramento:
             conn.commit()
             conn.close()
         except Exception as e:
-            print(f"Erro ao salvar log no banco: {e}")
+            st.error(f"Erro ao salvar log no banco: {e}")
