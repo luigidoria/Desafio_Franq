@@ -87,27 +87,54 @@ st.divider()
 session_key_code = f"code_gen_{arquivo_atual.id}"
 session_key_meta = f"meta_gen_{arquivo_atual.id}"
 session_key_exec = f"exec_ok_{arquivo_atual.id}"
+session_key_error = f"gen_error_{arquivo_atual.id}"
+session_key_auto = f"auto_run_{arquivo_atual.id}"
 
 if session_key_code not in st.session_state:
     
     colunas_hash = list(arquivo_atual.df_original.columns)
     hash_est = gerar_hash_estrutura(colunas_hash, arquivo_atual.validacao["detalhes"])
-    script_cache = buscar_script_cache(hash_est)
     
-    if script_cache:
-        st.session_state[session_key_code] = script_cache["script"]
-        st.session_state[session_key_meta] = {
-            "hash": hash_est,
-            "tokens": 0, 
-            "econ": script_cache.get("custo_tokens", 0),
-            "fonte": "CACHE",
-            "vezes_utilizado": script_cache.get("vezes_utilizado", 0)
-        }
-        st.rerun()
+    found_in_cache = False
     
-    else:
-        st.info("Nenhuma correção conhecida encontrada no cache. Necessário gerar via IA.")
-        if st.button("Gerar Script de Correção", type="primary"):
+    if session_key_auto not in st.session_state and not st.session_state.get(session_key_error):
+        script_cache = buscar_script_cache(hash_est)
+        
+        if script_cache:
+            st.session_state[session_key_code] = script_cache["script"]
+            st.session_state[session_key_meta] = {
+                "hash": hash_est,
+                "tokens": 0, 
+                "econ": script_cache.get("custo_tokens", 0),
+                "fonte": "CACHE",
+                "vezes_utilizado": script_cache.get("vezes_utilizado", 0)
+            }
+            found_in_cache = True
+            st.rerun()
+    
+    if not found_in_cache:
+        if session_key_error in st.session_state:
+            st.error(f"Falha na tentativa anterior: {st.session_state[session_key_error]}")
+            st.warning("Verifique sua conexão ou tente novamente.")
+
+        if session_key_auto not in st.session_state:
+            st.info("Necessário gerar correção via IA.")
+        
+        trigger_generation = False
+        if session_key_auto in st.session_state:
+            trigger_generation = True
+            st.info("Gerando novo código automaticamente...")
+        else:
+            if st.button("Gerar Script de Correção", type="primary"):
+                trigger_generation = True
+
+        if trigger_generation:
+            if session_key_error in st.session_state:
+                del st.session_state[session_key_error]
+            
+            if session_key_auto in st.session_state:
+                del st.session_state[session_key_auto]
+                
             with st.spinner("IA analisando dados..."):
                 try:
                     codigo, usou_cache, hash_est, s_id, qtd, tokens, econ = gerar_codigo_correcao_ia(
@@ -128,7 +155,8 @@ if session_key_code not in st.session_state:
                     
                 except Exception as e:
                     arquivo_atual.logger.registrar_erro("GERACAO_SCRIPT", "API Error", str(e))
-                    st.error(f"Erro na IA: {e}")
+                    st.session_state[session_key_error] = str(e)
+                    st.rerun()
 
 else:
     meta = st.session_state[session_key_meta]
@@ -143,16 +171,29 @@ else:
     st.code(codigo_atual, language="python")
     
     if session_key_exec not in st.session_state:
-        if st.button("Executar Código", type="primary", width='stretch'):
-            try:
-                local_ns = {"df": arquivo_atual.df_original.copy(), "pd": pd}
-                exec(codigo_atual, local_ns)
-                df_temp = local_ns["df"]
-                
-                st.session_state[session_key_exec] = df_temp
+        
+        c_exec, c_disc = st.columns([3, 1])
+        
+        with c_exec:
+            if st.button("Executar Código", type="primary", use_container_width=True):
+                try:
+                    local_ns = {"df": arquivo_atual.df_original.copy(), "pd": pd}
+                    exec(codigo_atual, local_ns)
+                    df_temp = local_ns["df"]
+                    
+                    st.session_state[session_key_exec] = df_temp
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro de Execução: {e}")
+        
+        with c_disc:
+            if st.button("Descartar e Tentar Novamente", type="secondary", use_container_width=True):
+                del st.session_state[session_key_code]
+                del st.session_state[session_key_meta]
+                st.session_state[session_key_auto] = True
+                if session_key_error in st.session_state: del st.session_state[session_key_error]
                 st.rerun()
-            except Exception as e:
-                st.error(f"Erro de Execução: {e}")
+                
     else:
         df_temp = st.session_state[session_key_exec]
         st.success("Código executado com sucesso! Veja o preview abaixo.")
@@ -161,7 +202,7 @@ else:
         col_act1, col_act2 = st.columns([1, 1])
         
         with col_act1:
-            if st.button("Confirmar e Próximo", type="primary", width='stretch'):
+            if st.button("Confirmar e Próximo", type="primary", use_container_width=True):
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".csv", mode='w', encoding='utf-8') as tmp:
                     df_temp.to_csv(tmp.name, index=False)
                     tmp_path = tmp.name
@@ -191,6 +232,7 @@ else:
                     del st.session_state[session_key_code]
                     del st.session_state[session_key_meta]
                     del st.session_state[session_key_exec]
+                    if session_key_error in st.session_state: del st.session_state[session_key_error]
                     st.rerun()
                 else:
                     st.error(f"A validação falhou com {res['total_erros']} erros.")
@@ -198,10 +240,12 @@ else:
 
         with col_act2:
             if meta["fonte"] == "IA":
-                if st.button("Descartar e Gerar Novo Código", type="secondary", width='stretch'):
+                if st.button("Descartar e Gerar Novo Código", type="secondary", use_container_width=True):
                     del st.session_state[session_key_code]
                     del st.session_state[session_key_meta]
                     del st.session_state[session_key_exec] 
+                    st.session_state[session_key_auto] = True
+                    if session_key_error in st.session_state: del st.session_state[session_key_error]
                     st.rerun()
 
 st.divider()
@@ -218,5 +262,7 @@ if button_col3.button("Pular este arquivo (Marcar como Falha)", type="secondary"
     if session_key_code in st.session_state: del st.session_state[session_key_code]
     if session_key_meta in st.session_state: del st.session_state[session_key_meta]
     if session_key_exec in st.session_state: del st.session_state[session_key_exec]
+    if session_key_error in st.session_state: del st.session_state[session_key_error]
+    if session_key_auto in st.session_state: del st.session_state[session_key_auto]
     
     st.rerun()
