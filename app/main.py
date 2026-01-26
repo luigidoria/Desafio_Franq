@@ -81,9 +81,7 @@ with container:
             bar_progress.empty()
             st.rerun()
 
-if st.session_state["fila_arquivos"]:
-    st.divider()
-    
+if st.session_state["fila_arquivos"]:    
     total = len(st.session_state["fila_arquivos"])
     pendentes = len([f for f in st.session_state["fila_arquivos"] if "PENDENTE" in f.status])
     prontos = total - pendentes
@@ -92,6 +90,8 @@ if st.session_state["fila_arquivos"]:
     c1.metric("Total na Fila", total)
     c2.metric("Prontos", prontos)
     c3.metric("Pendentes", pendentes)
+
+    st.divider()
     
     st.subheader("Fila de Processamento")
     
@@ -101,12 +101,10 @@ if st.session_state["fila_arquivos"]:
     h3.markdown("**Detalhes**")
     h4.markdown("**Ação**")
     
-    st.divider()
-    
     for idx, item in enumerate(st.session_state["fila_arquivos"]):
-        c1, c2, c3, c4 = st.columns([3, 2, 2, 1])
+        c1, c2, c3, c4 = st.columns([3, 2, 2, 1], vertical_alignment="center")
         
-        c1.text(item.nome)
+        c1.markdown(f"**{item.nome}**")
         
         if item.status == "PRONTO_VALIDO":
             c2.success("Valido")
