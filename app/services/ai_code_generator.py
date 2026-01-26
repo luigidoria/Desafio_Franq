@@ -10,7 +10,8 @@ from app.utils.data_handler import carregar_template
 from app.utils.ui_components import formatar_titulo_erro
 
 def _construir_instrucoes_dinamicas(detalhes_erros):
-    instrucoes = []
+    instrucoes_estrutura = []
+    instrucoes_dados = []
     
     for erro in detalhes_erros:
         tipo = erro.get("tipo")
@@ -18,7 +19,7 @@ def _construir_instrucoes_dinamicas(detalhes_erros):
         if tipo == "colunas_faltando":
             cols = erro.get("colunas", [])
             cols_str = ", ".join([f"'{c}'" for c in cols])
-            instrucoes.append(
+            instrucoes_estrutura.append(
                 f"CRITICO - COLUNAS FALTANDO: O DataFrame NAO possui as colunas obrigatorias [{cols_str}]. "
                 f"Voce DEVE cria-las explicitamente. Preencha com None (objeto Python nativo) para garantir compatibilidade com SQL. NAO use pd.NA."
             )
@@ -26,46 +27,50 @@ def _construir_instrucoes_dinamicas(detalhes_erros):
         elif tipo == "nomes_colunas":
             mapeamento = erro.get("mapeamento", {})
             if mapeamento:
-                instrucoes.append(
-                    f"RENOMEACAO: As colunas estao incorretas. Use examente este mapeamento no rename: {json.dumps(mapeamento)}."
+                instrucoes_estrutura.append(
+                    f"RENOMEACAO: As colunas estao incorretas. Use examente este mapeamento no rename: {json.dumps(mapeamento)}. "
+                    f"IMPORTANTE: Se uma coluna de destino ja existir no DF, remova-a (drop) ANTES de renomear para evitar colunas duplicadas com o mesmo nome."
                 )
-
+        
         elif tipo == "formato_valor":
-            instrucoes.append(
+            instrucoes_dados.append(
                 "FORMATACAO DE VALOR: Identifique colunas monetarias (ex: com 'R$', pontos de milhar). "
                 "Converta para float: remova 'R$', remova pontos, substitua virgula por ponto."
             )
             
         elif tipo == "formato_data":
-            instrucoes.append(
-                "FORMATACAO DE DATA: Converta colunas de data para datetime e depois para string 'YYYY-MM-DD'. "
-                "Use pd.to_datetime(..., dayfirst=True, errors='coerce')."
+            instrucoes_dados.append(
+                "FORMATACAO DE DATA (CRITICO): Converta colunas de data para datetime. "
+                "Use pd.to_datetime(..., format='mixed', dayfirst=True, errors='coerce'). " \
+                "Depois converta para o formato 'YYYY-MM-DD' com .dt.strftime('%Y-%m-%d')."
             )
             
         elif tipo == "duplicatas":
-            instrucoes.append("DUPLICATAS: Remova linhas duplicadas mantendo a primeira ocorrencia (df.drop_duplicates()).")
+            instrucoes_dados.append("DUPLICATAS: Remova linhas duplicadas mantendo a primeira ocorrencia (df.drop_duplicates()).")
+
+    instrucoes = instrucoes_estrutura + instrucoes_dados
 
     if not instrucoes:
         instrucoes.append("Analise os dados e aplique as correcoes necessarias para adequar ao schema.")
         
     return "\n".join([f"{i+1}. {inst}" for i, inst in enumerate(instrucoes)])
 
-def gerar_codigo_correcao_ia(df, resultado_validacao):
+def gerar_codigo_correcao_ia(df, resultado_validacao, ignorar_cache=False):
     colunas_df = list(df.columns)
     hash_estrutura = gerar_hash_estrutura(colunas_df, resultado_validacao["detalhes"])
     
-    script_cache = buscar_script_cache(hash_estrutura)
-    
-    if script_cache:
-        return (
-            script_cache["script"],
-            True,
-            hash_estrutura,
-            script_cache["id"],
-            script_cache["vezes_utilizado"],
-            0,
-            script_cache.get("custo_tokens", 0)
-        )
+    if not ignorar_cache:
+        script_cache = buscar_script_cache(hash_estrutura)
+        if script_cache:
+            return (
+                script_cache["script"],
+                True,
+                hash_estrutura,
+                script_cache["id"],
+                script_cache["vezes_utilizado"],
+                0,
+                script_cache.get("custo_tokens", 0)
+            )
     
     env_path = Path(__file__).parent.parent / "secrets.env"
     load_dotenv(env_path)
@@ -117,7 +122,8 @@ def gerar_codigo_correcao_ia(df, resultado_validacao):
     2. O codigo deve assumir que 'df' e 'pd' ja existem.
     3. NAO use blocos markdown (```python). Retorne apenas o codigo.
     4. Se precisar de regex, importe 're'. Se precisar de numpy, importe 'numpy as np'.
-    5. A saida final deve ser a alteracao do dataframe `df`.
+    5. GARANTIA FINAL: Apos todas as transformacoes, execute df = df.loc[:, ~df.columns.duplicated()] para garantir que nao existam colunas com nomes duplicados.
+    6. A saida final deve ser a alteracao do dataframe `df`.
 
     Gere apenas o codigo Python:
     """
