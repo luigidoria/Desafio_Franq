@@ -24,7 +24,7 @@ def init_logger_table():
                 registros_inseridos INTEGER DEFAULT 0,
                 registros_duplicados INTEGER DEFAULT 0,
                 registros_erros INTEGER DEFAULT 0,       
-                status TEXT NOT NULL CHECK (status IN ('CONCLUIDO', 'FALHA', 'INTERROMPIDO')),
+                status TEXT NOT NULL CHECK (status IN ('CONCLUIDO', 'FALHA', 'INTERROMPIDO', 'PENDENTE', 'CANCELADO', 'PROCESSANDO')),
                 etapa_final TEXT,
                 tipo_erro TEXT,
                 mensagem_erro TEXT,
@@ -42,112 +42,7 @@ def init_logger_table():
     except Exception as e:
         print(f"Erro ao inicializar tabela de logs: {e}")
 
-def calcular_hash(bytes_arquivo):
-    return hashlib.sha256(bytes_arquivo).hexdigest()
-
-
-def salvar_log_no_banco(dados_log):
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            INSERT INTO monitoramento_processamento 
-            (arquivo_hash, arquivo_nome, origem_correcao, tokens_gastos, tokens_economizados, tentativas_ia,
-             registros_inseridos, registros_duplicados, registros_erros, status, 
-             etapa_final, tipo_erro, mensagem_erro, duracao_segundos)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            dados_log.get("hash"),
-            dados_log.get("nome"),
-            dados_log.get("origem_correcao", "NENHUMA"),
-            dados_log.get("tokens", 0),
-            dados_log.get("tokens_economizados", 0),
-            dados_log.get("tentativas_ia", 0),
-            dados_log.get("inseridos", 0),      
-            dados_log.get("duplicados", 0),  
-            dados_log.get("erros", 0),       
-            dados_log.get("status"),
-            dados_log.get("etapa"),
-            dados_log.get("tipo_erro"),
-            dados_log.get("mensagem_erro"),
-            dados_log.get("duracao", 0.0)
-        ))
-        
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"Erro ao salvar log no banco: {e}")
-
-def atualizar_uso_ia(tokens, fonte, tokens_economizados=0):
-    if "log_atual" in st.session_state:
-        log = st.session_state["log_atual"]
-        log["tokens"] = log.get("tokens", 0) + tokens
-        log["tokens_economizados"] = log.get("tokens_economizados", 0) + tokens_economizados
-        log["origem_correcao"] = fonte
-        log["etapa"] = "GERACAO_SCRIPT"
-        if fonte == 'IA':
-            log["tentativas_ia"] = log.get("tentativas_ia", 0) + 1
-
-def iniciar_monitoramento(uploaded_file):
-    if "log_atual" in st.session_state:
-        log_anterior = st.session_state["log_atual"]
-        
-        if log_anterior.get("status") == "PROCESSANDO":
-            log_anterior["status"] = "INTERROMPIDO"
-            log_anterior["duracao"] = (datetime.now() - log_anterior["inicio"]).total_seconds()
-            
-            salvar_log_no_banco(log_anterior)
-    
-    arquivo_bytes = uploaded_file.getvalue()
-    arquivo_hash = calcular_hash(arquivo_bytes)
-    
-    st.session_state["log_atual"] = {
-        "hash": arquivo_hash,
-        "nome": uploaded_file.name,
-        "inicio": datetime.now(),
-        "origem_correcao": "NENHUMA",
-        "tokens": 0,
-        "tokens_economizados": 0,
-        "tentativas_ia": 0,
-        "inseridos": 0,
-        "duplicados": 0,
-        "erros": 0,
-        "etapa": "UPLOAD",
-        "status": "PROCESSANDO",
-        "tipo_erro": None,
-        "mensagem_erro": None
-    }
-
-def registrar_erro(etapa, tipo_erro, mensagem_erro):
-    if "log_atual" in st.session_state:
-        log = st.session_state["log_atual"]
-        log["etapa"] = etapa
-        log["status"] = "FALHA"
-        log["tipo_erro"] = str(tipo_erro)
-        log["mensagem_erro"] = str(mensagem_erro)[0:500] 
-        log["duracao"] = (datetime.now() - log["inicio"]).total_seconds()
-        
-        salvar_log_no_banco(log)
-
-        del st.session_state["log_atual"]
-
-def registrar_conclusao(inseridos, duplicados, erros):
-    if "log_atual" in st.session_state:
-        log = st.session_state["log_atual"]
-        log["etapa"] = "INGESTAO"
-        log["status"] = "CONCLUIDO"
-        log["inseridos"] = inseridos      
-        log["duplicados"] = duplicados
-        log["erros"] = erros     
-        log["duracao"] = (datetime.now() - log["inicio"]).total_seconds()
-        
-        salvar_log_no_banco(log)
-        
-        del st.session_state["log_atual"]
-
 def carregar_dados():
-
     try:
         conn = sqlite3.connect(DB_PATH)
         query = """
@@ -162,9 +57,98 @@ def carregar_dados():
         df = pd.read_sql_query(query, conn)
         conn.close()
         
-        
         df['created_at'] = pd.to_datetime(df['created_at'])
         return df
     except Exception as e:
         st.error(f"Erro ao conectar no banco: {e}")
         return pd.DataFrame()
+    
+class LogMonitoramento:
+    def __init__(self, file_object):
+        self.arquivo_bytes = file_object.getvalue()
+        self.dados = {
+            "hash": hashlib.sha256(self.arquivo_bytes).hexdigest(),
+            "nome": file_object.name,
+            "inicio": datetime.now(),
+            "origem_correcao": "NENHUMA",
+            "tokens": 0,
+            "tokens_economizados": 0,
+            "tentativas_ia": 0,
+            "inseridos": 0,
+            "duplicados": 0,
+            "erros": 0,
+            "etapa": "UPLOAD",
+            "status": "PROCESSANDO",
+            "tipo_erro": None,
+            "mensagem_erro": None,
+            "duracao": 0.0
+        }
+        
+    def registrar_uso_ia(self, tokens, fonte, tokens_economizados=0):
+        self.dados["tokens"] += tokens 
+        self.dados["tokens_economizados"] += tokens_economizados
+        self.dados["origem_correcao"] = fonte
+        self.dados["etapa"] = "GERACAO_SCRIPT"
+        if fonte == 'IA':
+            self.dados["tentativas_ia"] += 1
+
+    def registrar_erro(self, etapa, tipo_erro, mensagem_erro):
+        self.dados["etapa"] = etapa
+        self.dados["status"] = "FALHA"
+        self.dados["tipo_erro"] = str(tipo_erro)
+        self.dados["mensagem_erro"] = str(mensagem_erro)[0:500]
+        self.dados["duracao"] = (datetime.now() - self.dados["inicio"]).total_seconds()
+        self._salvar_log_no_banco()
+
+    def registrar_conclusao(self, inseridos, duplicados, erros):
+        self.dados["etapa"] = "INGESTAO"
+        self.dados["status"] = "CONCLUIDO"
+        self.dados["inseridos"] = inseridos
+        self.dados["duplicados"] = duplicados
+        self.dados["erros"] = erros
+        self.dados["duracao"] = (datetime.now() - self.dados["inicio"]).total_seconds()
+        self._salvar_log_no_banco()
+
+    def registrar_pendencia(self):
+        self.dados["status"] = "PENDENTE"
+        self.dados["duracao"] = (datetime.now() - self.dados["inicio"]).total_seconds()
+        self._salvar_log_no_banco()
+
+    def registrar_cancelamento(self):
+        self.dados["status"] = "CANCELADO"
+        self.dados["etapa"] = "REMOVIDO_PELO_USUARIO"
+        self.dados["duracao"] = (datetime.now() - self.dados["inicio"]).total_seconds()
+        self._salvar_log_no_banco()
+
+    def _salvar_log_no_banco(self):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                INSERT INTO monitoramento_processamento 
+                (arquivo_hash, arquivo_nome, origem_correcao, tokens_gastos, tokens_economizados, tentativas_ia,
+                registros_inseridos, registros_duplicados, registros_erros, status, 
+                etapa_final, tipo_erro, mensagem_erro, duracao_segundos)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                self.dados.get("hash"),
+                self.dados.get("nome"),
+                self.dados.get("origem_correcao", "NENHUMA"),
+                self.dados.get("tokens", 0),
+                self.dados.get("tokens_economizados", 0),
+                self.dados.get("tentativas_ia", 0),
+                self.dados.get("inseridos", 0),      
+                self.dados.get("duplicados", 0),  
+                self.dados.get("erros", 0),       
+                self.dados.get("status"),
+                self.dados.get("etapa"),
+                self.dados.get("tipo_erro"),
+                self.dados.get("mensagem_erro"),
+                self.dados.get("duracao", 0.0)
+            ))
+            
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"Erro ao salvar log no banco: {e}")
