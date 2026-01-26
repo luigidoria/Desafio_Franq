@@ -100,7 +100,8 @@ if session_key_code not in st.session_state:
             "hash": hash_est,
             "tokens": 0, 
             "econ": script_cache.get("custo_tokens", 0),
-            "fonte": "CACHE"
+            "fonte": "CACHE",
+            "vezes_utilizado": script_cache.get("vezes_utilizado", 0)
         }
         st.rerun()
     
@@ -134,7 +135,8 @@ else:
     codigo_atual = st.session_state[session_key_code]
     
     if meta["fonte"] == "CACHE":
-        st.success("Código recuperado do CACHE. Verifique e execute.")
+        vezes = meta.get("vezes_utilizado", 0)
+        st.success(f"Código recuperado do CACHE. Verifique e execute. (Utilizado {vezes} vezes)")
     else:
         st.info("Código gerado pela IA. Verifique e execute.")
         
