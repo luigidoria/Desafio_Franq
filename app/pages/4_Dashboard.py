@@ -33,7 +33,7 @@ with st.sidebar:
 
     st.divider()
 
-    origem_atual = st.session_state.get("pagina_anterior", "main.py")
+    origem_atual = st.session_state.get("origem_dashboard", "main.py")
     
     if "main" in origem_atual:
         texto_botao = "Voltar para Início"

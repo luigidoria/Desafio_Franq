@@ -6,6 +6,7 @@ from utils.ui_components import formatar_titulo_erro
 from utils.file_session import FileSession
 from services.logger import init_logger_table
 from services.script_cache import init_script_costs_table
+import services.auth_manager as auth_manager
 
 st.set_page_config(
     page_title="Franq | Ingestão de Dados",
@@ -49,8 +50,12 @@ with st.sidebar:
 
     st.divider()
     if st.button("Ver Dashboard", width='stretch'):
-        st.session_state["pagina_anterior"] = "main.py"
+        st.session_state["origem_dashboard"] = "main.py"
         st.switch_page("pages/4_Dashboard.py")
+        
+    if st.button("Configurações", width='stretch'):
+        st.session_state["origem_config"] = "main.py" 
+        st.switch_page("pages/9_Configuracoes.py")
 
 container = st.container(border=True)
 with container:

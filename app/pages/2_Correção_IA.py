@@ -31,8 +31,12 @@ with st.sidebar:
 
     st.divider() 
     if st.button("Ver Dashboard", width='stretch'):
-        st.session_state["pagina_anterior"] = "pages/2_Correção_IA.py"
+        st.session_state["origem_dashboard"] = "pages/2_Correção_IA.py"
         st.switch_page("pages/4_Dashboard.py")
+        
+    if st.button("Configurações", width='stretch'):
+        st.session_state["origem_config"] = "pages/2_Correção_IA.py"
+        st.switch_page("pages/9_Configuracoes.py")
 
 st.markdown("""
     <style>
