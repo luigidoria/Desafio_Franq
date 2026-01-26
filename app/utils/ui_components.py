@@ -82,3 +82,21 @@ def exibir_relatorio(resultado, duracao):
                     "erro": st.column_config.TextColumn("Motivo do Erro", width="large")
                 }
             )
+
+def preparar_retorno_ia(arquivo, msg_erro):
+    st.session_state[f"ignore_cache_{arquivo.id}"] = True
+    st.session_state["erro_anterior"] = f"Falha na inserção: {msg_erro}"
+    
+    if f"code_gen_{arquivo.id}" in st.session_state:
+        st.session_state["script_anterior"] = st.session_state[f"code_gen_{arquivo.id}"]
+    
+    if "erro_insercao_critico" in st.session_state:
+        del st.session_state["erro_insercao_critico"]
+        
+    arquivo.status = "PENDENTE_CORRECAO"
+    st.switch_page("pages/2_Correção_IA.py")
+
+def ir_para_dashboard():
+    st.session_state["fila_arquivos"] = []
+    st.session_state["pagina_anterior"] = "main.py"
+    st.switch_page("pages/4_Dashboard.py")
