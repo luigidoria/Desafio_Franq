@@ -146,7 +146,7 @@ with col_graf4:
     if not df_erros.empty:
         st.dataframe(
             df_erros[['created_at', 'arquivo_nome', 'etapa_final', 'tipo_erro', 'mensagem_erro']],
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
             column_config={
                 "created_at": st.column_config.DatetimeColumn("Data", format="DD/MM/YYYY HH:mm"),
