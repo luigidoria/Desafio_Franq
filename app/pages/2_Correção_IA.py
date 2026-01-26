@@ -175,7 +175,7 @@ else:
         c_exec, c_disc = st.columns([3, 1])
         
         with c_exec:
-            if st.button("Executar Código", type="primary", use_container_width=True):
+            if st.button("Executar Código", type="primary", width='stretch'):
                 try:
                     local_ns = {"df": arquivo_atual.df_original.copy(), "pd": pd}
                     exec(codigo_atual, local_ns)
@@ -187,7 +187,7 @@ else:
                     st.error(f"Erro de Execução: {e}")
         
         with c_disc:
-            if st.button("Descartar e Tentar Novamente", type="secondary", use_container_width=True):
+            if st.button("Descartar e Tentar Novamente", type="secondary", width='stretch'):
                 del st.session_state[session_key_code]
                 del st.session_state[session_key_meta]
                 st.session_state[session_key_auto] = True
@@ -202,7 +202,7 @@ else:
         col_act1, col_act2 = st.columns([1, 1])
         
         with col_act1:
-            if st.button("Confirmar e Próximo", type="primary", use_container_width=True):
+            if st.button("Confirmar e Próximo", type="primary", width='stretch'):
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".csv", mode='w', encoding='utf-8') as tmp:
                     df_temp.to_csv(tmp.name, index=False)
                     tmp_path = tmp.name
@@ -240,7 +240,7 @@ else:
 
         with col_act2:
             if meta["fonte"] == "IA":
-                if st.button("Descartar e Gerar Novo Código", type="secondary", use_container_width=True):
+                if st.button("Descartar e Gerar Novo Código", type="secondary", width='stretch'):
                     del st.session_state[session_key_code]
                     del st.session_state[session_key_meta]
                     del st.session_state[session_key_exec] 
