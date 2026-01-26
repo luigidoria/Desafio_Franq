@@ -18,6 +18,8 @@ class FileSession:
         self.encoding = None
         self.delimitador = None
         self.cache_verificado = False
+        self.resultado_insercao = None
+        self.relatorio_visualizado = False
         
         self.logger = LogMonitoramento(uploaded_file) 
 
@@ -28,7 +30,7 @@ class FileSession:
             if self.validacao["valido"]:
                 self.status = "PRONTO_VALIDO"
                 self.df_corrigido = self.df_original
-                self.logger.registrar_pendencia() 
+                self.logger.registrar_conclusao(0, 0, 0)
             else:
                 self.status = "PENDENTE_CORRECAO"
                 self.logger.registrar_pendencia()
@@ -38,15 +40,28 @@ class FileSession:
             self.logger.registrar_erro("UPLOAD", "Excecao", str(e))
             raise e
 
-    def cancelar(self):
-        self.logger.registrar_cancelamento()
-    
     def update_ia_stats(self, tokens, fonte, economia=0):
         self.logger.registrar_uso_ia(tokens, fonte, economia)
         
-    def finalizar_insercao(self, inseridos, duplicados, erros):
-        self.logger.registrar_conclusao(inseridos, duplicados, erros)
+    def finalizar_insercao(self, resultado_dict, duracao):
+        total_sucesso = resultado_dict.get("registros_inseridos", 0)
+        total_erros_geral = len(resultado_dict.get("erros", []))
+        erros_duplicados = resultado_dict.get("registros_duplicados", 0)
+        erros_reais = total_erros_geral - erros_duplicados
+        
+        self.logger.registrar_conclusao(total_sucesso, erros_duplicados, erros_reais)
+        
+        self.resultado_insercao = resultado_dict
+        self.resultado_insercao["duracao"] = duracao
+        
+        self.resultado_insercao["nome_arquivo"] = self.nome
+        origem = self.logger.dados.get("origem_correcao", "NENHUMA")
+        self.resultado_insercao["usou_ia"] = origem in ["IA", "CACHE"]
+        
+        self.status = "CONCLUIDO"
+
+    def cancelar(self):
+        self.logger.registrar_cancelamento()
 
     def __getitem__(self, key):
         return getattr(self, key)
-    
