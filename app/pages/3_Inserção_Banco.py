@@ -4,13 +4,10 @@ from pathlib import Path
 import sys
 import time
 
-# Adiciona o diretório raiz ao path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from app.services.insert_data import inserir_transacoes, registrar_log_ingestao
-from app.utils.session_manager import limpar_sessao_para_inicio
+from app.services.insert_data import inserir_transacoes
 from app.utils.ui_components import exibir_preview, exibir_relatorio
-from app.services.logger import registrar_erro, registrar_conclusao
 
 st.set_page_config(
     page_title="Franq | Inserção no Banco",
@@ -27,96 +24,88 @@ st.markdown("""
 with st.sidebar:
     st.markdown("""
     **Como funciona:**
-    1. Revise os dados corrigidos.
-    2. Confirme a inserção no banco.
-    3. Visualize o relatório de status.
+    1. Suba os arquivos CSV.
+    2. O sistema valida os dados.
+    3. A IA corrige erros automaticamente.
+    4. Dados corrigidos são inseridos no banco.
     """)
-
+    
     st.divider()
     if st.button("Ver Dashboard", width='stretch'):
         st.session_state["pagina_anterior"] = "pages/3_Inserção_Banco.py"
         st.switch_page("pages/4_Dashboard.py")
-    
-
 
 st.title("Inserção no Banco de Dados")
 st.divider()
 
-if "df_corrigido" not in st.session_state or "validacao_aprovada" not in st.session_state:
-    st.warning("Nenhum dado validado encontrado!")
-    if st.button("Voltar para Correção IA", type="primary"):
-        st.switch_page("pages/2_Correção_IA.py")
+if "fila_arquivos" not in st.session_state or not st.session_state["fila_arquivos"]:
+    st.warning("Fila de arquivos vazia.")
+    if st.button("Voltar para Início", type="primary"):
+        st.switch_page("main.py")
     st.stop()
 
-df_corrigido = st.session_state["df_corrigido"]
+arquivo_atual = None
 
-if not st.session_state.get("insercao_concluida", False):
+for f in st.session_state["fila_arquivos"]:
+    if f.status in ["PRONTO_VALIDO", "PRONTO_IA", "PRONTO_CACHE"]:
+        arquivo_atual = f
+        break
+    if f.status == "CONCLUIDO" and not f.relatorio_visualizado:
+        arquivo_atual = f
+        break
+
+if arquivo_atual is None:
+    st.success("Todos os arquivos válidos foram processados!")
     
-    exibir_preview(df_corrigido)
-
-    st.warning("Esta ação irá escrever os dados no banco de dados.")
-
-    if st.button("Confirmar Inserção", type="primary", width='stretch'):
-        
-        with st.status("Processando ingestão de dados...", expanded=False) as status:
-            try:
-                inicio = time.time()
-                
-                st.write("Conectando ao banco de dados...")
-
-                st.write("Inserindo registros...")
-                resultado = inserir_transacoes(df_corrigido)
-                
-                duracao = time.time() - inicio
-                
-                st.write("Registrando logs de auditoria...")
-                arquivo_nome = st.session_state.get("nome_arquivo", "unknown.csv")
-                script_id = st.session_state.get("script_id_cache")
-                
-                total_sucesso = resultado.get("registros_inseridos", 0)
-                total_erros_geral = len(resultado.get("erros", []))
-                erros_duplicados = resultado.get("registros_duplicados", 0)
-                erros_reais = total_erros_geral - erros_duplicados
-                
-                registrar_log_ingestao(
-                    arquivo_nome=arquivo_nome,
-                    registros_total=resultado.get("total_registros", 0),
-                    registros_sucesso=total_sucesso,
-                    registros_erro=erros_reais,
-                    usou_ia=(script_id is not None),
-                    script_id=script_id,
-                    duracao_segundos=duracao
-                )
-
-                registrar_conclusao(total_sucesso, erros_duplicados, erros_reais)
-                
-                status.update(label="Processo concluído!", state="complete", expanded=False)
-                
-                st.session_state["resultado_insercao"] = resultado
-                st.session_state["duracao_insercao"] = duracao
-                st.session_state["insercao_concluida"] = True
-                st.rerun()
-
-            except Exception as e:
-                registrar_erro("INSERCAO_DADOS", "Erro Inserção", str(e))
-                status.update(label="Erro crítico!", state="error")
-                st.error(f"Falha na inserção: {str(e)}")
-                st.stop()
-
-    if st.session_state.get("sem_modficadoes_necessarias", False):
-        if st.button("Voltar para Upload", width='stretch'):
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Voltar para Início", width='stretch'):
+            st.session_state["fila_arquivos"] = []
             st.switch_page("main.py")
+    with col2:
+        if st.button("Ir para Dashboard", type="primary", width='stretch'):
+            st.switch_page("pages/4_Dashboard.py")
+    st.stop()
+
+st.progress(0, text=f"Arquivo: {arquivo_atual.nome}")
+
+if arquivo_atual.status == "CONCLUIDO":
+    st.success(f"Processamento finalizado para: {arquivo_atual.nome}")
     
-    else:
-        if st.button("Voltar para Correção", width='stretch'):
-            st.switch_page("pages/2_Correção_IA.py")
+    exibir_relatorio(arquivo_atual.resultado_insercao, arquivo_atual.resultado_insercao["duracao"])
+    
+    if st.button("Próximo Arquivo", type="primary", width='stretch'):
+        arquivo_atual.relatorio_visualizado = True
+        st.rerun()
 
 else:
-    resultado = st.session_state.get("resultado_insercao", {})
-    duracao = st.session_state.get("duracao_insercao", 0)
+    df_final = arquivo_atual.df_corrigido if arquivo_atual.df_corrigido is not None else arquivo_atual.df_original
     
-    exibir_relatorio(resultado, duracao)
+    exibir_preview(df_final)
     
-    if st.button("Finalizar e Voltar ao Início", type="primary", width='stretch'):
-        limpar_sessao_para_inicio()
-        st.switch_page("main.py")
+    st.warning("Esta ação irá escrever os dados no banco de dados.")
+    
+    col_act1, col_act2 = st.columns([3, 1])
+    
+    with col_act1:
+        if st.button("Confirmar Inserção", type="primary", width='stretch'):
+            with st.status("Inserindo registros...", expanded=False) as status:
+                try:
+                    inicio = time.time()
+                    resultado = inserir_transacoes(df_final)
+                    duracao = time.time() - inicio
+                    
+                    arquivo_atual.finalizar_insercao(resultado, duracao)
+                    
+                    status.update(label="Concluído!", state="complete")
+                    st.rerun()
+                    
+                except Exception as e:
+                    status.update(label="Erro crítico!", state="error")
+                    arquivo_atual.logger.registrar_erro("INSERCAO", "Exception", str(e))
+                    st.error(f"Falha na inserção: {str(e)}")
+
+    with col_act2:
+        if st.button("Pular", width='stretch'):
+            arquivo_atual.status = "PULADO"
+            st.rerun()
