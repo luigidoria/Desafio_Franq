@@ -66,6 +66,7 @@ def carregar_dados():
 class LogMonitoramento:
     def __init__(self, file_object):
         self.arquivo_bytes = file_object.getvalue()
+        self.db_id = None
         self.dados = {
             "hash": hashlib.sha256(self.arquivo_bytes).hexdigest(),
             "nome": file_object.name,
@@ -91,6 +92,7 @@ class LogMonitoramento:
         self.dados["etapa"] = "GERACAO_SCRIPT"
         if fonte == 'IA':
             self.dados["tentativas_ia"] += 1
+        self._salvar_log_no_banco()
 
     def registrar_erro(self, etapa, tipo_erro, mensagem_erro):
         self.dados["etapa"] = etapa
@@ -125,28 +127,65 @@ class LogMonitoramento:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             
-            cursor.execute("""
-                INSERT INTO monitoramento_processamento 
-                (arquivo_hash, arquivo_nome, origem_correcao, tokens_gastos, tokens_economizados, tentativas_ia,
-                registros_inseridos, registros_duplicados, registros_erros, status, 
-                etapa_final, tipo_erro, mensagem_erro, duracao_segundos)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                self.dados.get("hash"),
-                self.dados.get("nome"),
-                self.dados.get("origem_correcao", "NENHUMA"),
-                self.dados.get("tokens", 0),
-                self.dados.get("tokens_economizados", 0),
-                self.dados.get("tentativas_ia", 0),
-                self.dados.get("inseridos", 0),      
-                self.dados.get("duplicados", 0),  
-                self.dados.get("erros", 0),       
-                self.dados.get("status"),
-                self.dados.get("etapa"),
-                self.dados.get("tipo_erro"),
-                self.dados.get("mensagem_erro"),
-                self.dados.get("duracao", 0.0)
-            ))
+            # Se ainda não tem ID, faz INSERT
+            if self.db_id is None:
+                cursor.execute("""
+                    INSERT INTO monitoramento_processamento 
+                    (arquivo_hash, arquivo_nome, origem_correcao, tokens_gastos, tokens_economizados, tentativas_ia,
+                    registros_inseridos, registros_duplicados, registros_erros, status, 
+                    etapa_final, tipo_erro, mensagem_erro, duracao_segundos)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    self.dados.get("hash"),
+                    self.dados.get("nome"),
+                    self.dados.get("origem_correcao", "NENHUMA"),
+                    self.dados.get("tokens", 0),
+                    self.dados.get("tokens_economizados", 0),
+                    self.dados.get("tentativas_ia", 0),
+                    self.dados.get("inseridos", 0),      
+                    self.dados.get("duplicados", 0),  
+                    self.dados.get("erros", 0),       
+                    self.dados.get("status"),
+                    self.dados.get("etapa"),
+                    self.dados.get("tipo_erro"),
+                    self.dados.get("mensagem_erro"),
+                    self.dados.get("duracao", 0.0)
+                ))
+                # Captura o ID da linha recém criada e guarda na memória
+                self.db_id = cursor.lastrowid
+            
+            # Se JÁ tem ID, faz UPDATE
+            else:
+                cursor.execute("""
+                    UPDATE monitoramento_processamento SET
+                        origem_correcao = ?,
+                        tokens_gastos = ?,
+                        tokens_economizados = ?,
+                        tentativas_ia = ?,
+                        registros_inseridos = ?,
+                        registros_duplicados = ?,
+                        registros_erros = ?,
+                        status = ?,
+                        etapa_final = ?,
+                        tipo_erro = ?,
+                        mensagem_erro = ?,
+                        duracao_segundos = ?
+                    WHERE id = ?
+                """, (
+                    self.dados.get("origem_correcao", "NENHUMA"),
+                    self.dados.get("tokens", 0),
+                    self.dados.get("tokens_economizados", 0),
+                    self.dados.get("tentativas_ia", 0),
+                    self.dados.get("inseridos", 0),      
+                    self.dados.get("duplicados", 0),  
+                    self.dados.get("erros", 0),       
+                    self.dados.get("status"),
+                    self.dados.get("etapa"),
+                    self.dados.get("tipo_erro"),
+                    self.dados.get("mensagem_erro"),
+                    self.dados.get("duracao", 0.0),
+                    self.db_id
+                ))
             
             conn.commit()
             conn.close()
