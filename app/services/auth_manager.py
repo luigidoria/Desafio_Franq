@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 import streamlit as st
-from dotenv import load_dotenv, set_key
+from dotenv import load_dotenv, set_key, unset_key
 from openai import OpenAI
 
 ENV_PATH = Path(__file__).parent.parent / "secrets.env"
@@ -72,6 +72,17 @@ class AuthManager:
             return False, "Chave salva apenas na sessao (sem permissao de escrita no arquivo)"
 
     def limpar_credenciais(self):
+        unset_key(ENV_PATH, "GROQ_API_KEY")
         self.api_key = None
         if "GROQ_API_KEY" in st.session_state:
             del st.session_state["GROQ_API_KEY"]
+
+    def verificar_autenticacao(self):
+        if not self.api_key:
+            st.warning("Autenticação Necessária")
+            st.markdown("A chave de API não foi encontrada ou foi removida. Configure novamente para continuar.")
+            
+            if st.button("Ir para Configurações", type="primary", key="auth_block_btn"):
+                st.switch_page("pages/9_Configuracoes.py")
+            
+            st.stop()
