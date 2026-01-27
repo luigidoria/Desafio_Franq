@@ -17,9 +17,7 @@ st.markdown("""
         [data-testid="stSidebarNav"] {display: none;}
         [data-testid="stSidebar"] {display: none;}
         [data-testid="collapsedControl"] {display: none;}
-        #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
-        header {visibility: hidden;}
         .block-container {padding-top: 2rem;}
     </style>
 """, unsafe_allow_html=True)
