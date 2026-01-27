@@ -8,7 +8,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.services.insert_data import inserir_transacoes, registrar_log_ingestao
-from app.utils.ui_components import exibir_preview, exibir_relatorio, preparar_retorno_ia, ir_para_dashboard, renderizar_stepper
+from app.utils.ui_components import exibir_preview, exibir_relatorio, preparar_retorno_ia, ir_para_dashboard, renderizar_stepper, configurar_estilo_visual
 from services.auth_manager import AuthManager
 
 st.set_page_config(
@@ -16,18 +16,10 @@ st.set_page_config(
     layout="wide"
 )
 
-st.markdown("""
-    <style>
-        [data-testid="stSidebarNav"] {display: none;}
-        footer {visibility: hidden;}
-        .block-container {padding-top: 2rem;}
-    </style>
-""", unsafe_allow_html=True)
+configurar_estilo_visual()
 
 auth = AuthManager()
 auth.verificar_autenticacao()
-
-renderizar_stepper(3)
 
 with st.sidebar:
     st.header("Navegação")
@@ -38,7 +30,8 @@ with st.sidebar:
     st.divider()
     st.caption("Confirmação final e persistência dos dados validados.")
 
-st.title("Inserção de Dados")
+#st.title("Inserção de Dados")
+renderizar_stepper(3)
 st.markdown("Confirmação e gravação das transações no banco de dados.")
 
 st.divider()

@@ -8,19 +8,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.services.logger import carregar_dados
 from services.auth_manager import AuthManager
+from app.utils.ui_components import configurar_estilo_visual
 
 st.set_page_config(
     page_title="Dashboard",
     layout="wide"
 )
 
-st.markdown("""
-    <style>
-        [data-testid="stSidebarNav"] { display: none; }
-        footer {visibility: hidden;}
-        .block-container {padding-top: 2rem;}
-    </style>
-""", unsafe_allow_html=True)
+configurar_estilo_visual()
 
 auth = AuthManager()
 auth.verificar_autenticacao()

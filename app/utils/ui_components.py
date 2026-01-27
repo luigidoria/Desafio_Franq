@@ -102,7 +102,8 @@ def ir_para_dashboard():
     st.switch_page("pages/4_Dashboard.py")
 
 def renderizar_stepper(etapa_atual):
-    st.markdown("###")
+    #st.markdown("###")
+    st.title("Portal de Ingestão")
     passos = {
         1: "Upload & Validação",
         2: "Correção via IA",
@@ -123,3 +124,16 @@ def renderizar_stepper(etapa_atual):
                     st.markdown(f":grey[{i}. {passos[i]}]")
         
         st.divider()
+
+def configurar_estilo_visual():
+    st.markdown("""
+        <style>
+            [data-testid="stSidebarNav"] {display: none;}
+            footer {visibility: hidden;}
+            .block-container {padding-top: 2rem;}
+            .stDeployButton {display: none !important;}
+            [data-testid="stDeployButton"] {display: none !important;}
+            [data-testid="stMainMenu"] {visibility: hidden !important;}
+            header {background: transparent !important;}
+        </style>
+    """, unsafe_allow_html=True)

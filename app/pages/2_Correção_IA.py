@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.validation import validar_csv_completo
-from app.utils.ui_components import formatar_titulo_erro, renderizar_stepper
+from app.utils.ui_components import formatar_titulo_erro, renderizar_stepper, configurar_estilo_visual
 from app.services.script_cache import salvar_script_cache, buscar_script_cache, gerar_hash_estrutura
 from app.services.ai_code_generator import gerar_codigo_correcao_ia
 from app.utils.data_handler import carregar_template
@@ -21,17 +21,10 @@ st.set_page_config(
     layout="wide"
 )
 
-st.markdown("""
-    <style>
-        footer {visibility: hidden;}
-        .block-container {padding-top: 2rem;}
-    </style>
-""", unsafe_allow_html=True)
+configurar_estilo_visual()
 
 auth = AuthManager()
 auth.verificar_autenticacao()
-
-renderizar_stepper(2)
 
 with st.sidebar:
     st.header("Navegação")
@@ -42,7 +35,8 @@ with st.sidebar:
     st.divider()
     st.caption("A IA analisará os erros e proporá um script de correção automática.")
 
-st.title("Correção Inteligente")
+#st.title("Correção Inteligente")
+renderizar_stepper(2)
 st.markdown("Revisão e aplicação de correções assistidas por IA.")
 
 st.divider()
