@@ -15,10 +15,7 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-        [data-testid="stSidebarNav"] {display: none;}
-        #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
-        header {visibility: hidden;}
         .block-container {padding-top: 2rem;}
     </style>
 """, unsafe_allow_html=True)
@@ -43,11 +40,11 @@ def remover_arquivo(indice):
 with st.sidebar:
     st.header("Navegação")
     
-    if st.button("Dashboard", use_container_width=True):
+    if st.button("Dashboard", width='stretch'):
         st.session_state["origem_dashboard"] = "main.py"
         st.switch_page("pages/4_Dashboard.py")
         
-    if st.button("Configurações", use_container_width=True):
+    if st.button("Configurações", width='stretch'):
         st.session_state["origem_config"] = "main.py" 
         st.switch_page("pages/9_Configuracoes.py")
 
@@ -207,10 +204,10 @@ if st.session_state["fila_arquivos"]:
     
     with col_acao:
         if pendentes > 0:
-            if st.button("Iniciar Correção", type="primary", use_container_width=True):
+            if st.button("Iniciar Correção", type="primary", width='stretch'):
                 st.session_state["indice_atual"] = 0
                 st.switch_page("pages/2_Correção_IA.py")
         
         elif total > 0:
-            if st.button("Avançar para Inserção", type="primary", use_container_width=True):
+            if st.button("Avançar para Inserção", type="primary", width='stretch'):
                 st.switch_page("pages/3_Inserção_Banco.py")

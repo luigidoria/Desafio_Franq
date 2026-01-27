@@ -100,7 +100,7 @@ class AuthManager:
                     """)
                     st.markdown("Clique abaixo para configurar sua credencial segura e liberar o acesso:")
                     
-                    if st.button("Configurar Acesso Agora", type="primary", use_container_width=True):
+                    if st.button("Configurar Acesso Agora", type="primary", width='stretch'):
                         st.switch_page("pages/9_Configuracoes.py")
                         
             st.stop()
