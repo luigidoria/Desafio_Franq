@@ -5,6 +5,7 @@ from openai import OpenAI
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from app.services.auth_manager import AuthManager
 from app.services.script_cache import gerar_hash_estrutura, buscar_script_cache
 from app.utils.data_handler import carregar_template
 from app.utils.ui_components import formatar_titulo_erro
@@ -72,9 +73,8 @@ def gerar_codigo_correcao_ia(df, resultado_validacao, ignorar_cache=False):
                 script_cache.get("custo_tokens", 0)
             )
     
-    env_path = Path(__file__).parent.parent / "secrets.env"
-    load_dotenv(env_path)
-    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    auth = AuthManager()
+    GROQ_API_KEY = auth.obter_api_key()
     
     if not GROQ_API_KEY:
         raise ValueError("API Key não encontrada! Configure o arquivo secrets.env")

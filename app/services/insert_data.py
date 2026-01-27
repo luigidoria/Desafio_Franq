@@ -1,3 +1,4 @@
+import streamlit as st
 import sqlite3
 import pandas as pd
 import json
@@ -150,7 +151,7 @@ def registrar_log_ingestao(arquivo_nome: str, registros_total: int, registros_su
     except Exception as e:
         if conn:
             conn.rollback()
-        print(f"Erro ao registrar log de ingestão: {e}")
+        st.error(f"Erro ao registrar log de ingestão: {e}")
         return False
         
     finally:

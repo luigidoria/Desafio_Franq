@@ -7,8 +7,9 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from app.services.insert_data import inserir_transacoes
+from app.services.insert_data import inserir_transacoes, registrar_log_ingestao
 from app.utils.ui_components import exibir_preview, exibir_relatorio, preparar_retorno_ia, ir_para_dashboard
+from services.auth_manager import AuthManager
 
 st.set_page_config(
     page_title="Franq | Inserção no Banco",
@@ -22,6 +23,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+
+auth = AuthManager()
+auth.verificar_autenticacao()
+
 with st.sidebar:
     st.markdown("""
     **Como funciona:**
@@ -33,8 +38,12 @@ with st.sidebar:
     
     st.divider()
     if st.button("Ver Dashboard", width='stretch'):
-        st.session_state["pagina_anterior"] = "pages/3_Inserção_Banco.py"
+        st.session_state["origem_dashboard"] = "pages/3_Inserção_Banco.py"
         st.switch_page("pages/4_Dashboard.py")
+        
+    if st.button("Configurações", width='stretch'):
+        st.session_state["origem_config"] = "pages/3_Inserção_Banco.py"
+        st.switch_page("pages/9_Configuracoes.py")
 
 st.title("Inserção no Banco de Dados")
 st.divider()
@@ -125,11 +134,29 @@ else:
                         df_final = df_final.replace({pd.NA: None, np.nan: None})
                         
                         resultado = inserir_transacoes(df_final)
-                        duracao = time.time() - inicio
+                        fim = time.time()
+                        duracao = fim - inicio
+
+                        
+                        inicio_real = getattr(arquivo_atual, "timestamp_upload", inicio)
+                        duracao_total = fim - inicio_real
                         
                         total_sucesso = resultado.get("registros_inseridos", 0)
                         total_duplicados = resultado.get("registros_duplicados", 0)
                         total_erros = len(resultado.get("erros", []))
+
+                        usou_ia = True if arquivo_atual.status == "IA" else False
+                        script_id = getattr(arquivo_atual, 'script_id', None)
+
+                        registrar_log_ingestao(
+                            arquivo_nome=arquivo_atual.nome,
+                            registros_total=resultado.get("total_registros", 0),
+                            registros_sucesso=total_sucesso,
+                            registros_erro=total_erros,
+                            usou_ia=usou_ia,
+                            script_id=script_id,
+                            duracao_segundos=duracao_total
+                        )
                         
                         if total_sucesso == 0 and total_duplicados == 0 and total_erros > 0:
                             msg = str(resultado["erros"][0])

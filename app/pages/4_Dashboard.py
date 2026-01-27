@@ -7,12 +7,16 @@ import plotly.express as px
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.services.logger import carregar_dados
+from services.auth_manager import AuthManager
 
 st.set_page_config(
     page_title="Franq | Dashboard",
     page_icon=":bar_chart:",
     layout="wide"
 )
+
+auth = AuthManager()
+auth.verificar_autenticacao()
 
 st.markdown("""
     <style>
@@ -33,7 +37,7 @@ with st.sidebar:
 
     st.divider()
 
-    origem_atual = st.session_state.get("pagina_anterior", "main.py")
+    origem_atual = st.session_state.get("origem_dashboard", "main.py")
     
     if "main" in origem_atual:
         texto_botao = "Voltar para Início"
