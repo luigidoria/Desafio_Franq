@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.validation import validar_csv_completo
-from app.utils.ui_components import formatar_titulo_erro
+from app.utils.ui_components import formatar_titulo_erro, renderizar_stepper
 from app.services.script_cache import salvar_script_cache, buscar_script_cache, gerar_hash_estrutura
 from app.services.ai_code_generator import gerar_codigo_correcao_ia
 from app.utils.data_handler import carregar_template
@@ -30,6 +30,8 @@ st.markdown("""
 
 auth = AuthManager()
 auth.verificar_autenticacao()
+
+renderizar_stepper(2)
 
 with st.sidebar:
     st.header("Navegação")

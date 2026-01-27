@@ -110,34 +110,28 @@ with col_graf2:
     with st.container(border=True):
         st.subheader("Consumo vs Economia Diária")
         
-        # Ajuste para agrupar por data
         df['data_obj'] = df['created_at'].dt.date
         
-        # Agrupamos somando tanto gastos quanto economizados
         df_diario = df.groupby('data_obj')[['tokens_gastos', 'tokens_economizados']].sum().reset_index()
         
-        # Renomeia para ficar bonito na legenda
         df_diario.columns = ['Data', 'Gastos (IA)', 'Economizados (Cache)']
         
-        # Formata a data
         df_diario['Data_Formatada'] = df_diario['Data'].apply(lambda x: x.strftime('%d/%m/%Y'))
         
-        # Cria o gráfico passando uma lista no eixo Y para criar o agrupamento
         fig_bar = px.bar(
             df_diario,
             x='Data_Formatada',
-            y=['Gastos (IA)', 'Economizados (Cache)'], # Duas colunas aqui cria o agrupamento
-            barmode='group', # Coloca lado a lado
+            y=['Gastos (IA)', 'Economizados (Cache)'], 
+            barmode='group', 
             height=350,
-            color_discrete_map={ # Mantém consistência com o gráfico de pizza
+            color_discrete_map={ 
                 'Gastos (IA)': '#FF6B6B', 
                 'Economizados (Cache)': '#4ECDC4'
             }
         )
         
-        # Ajustes visuais finos
         fig_bar.update_traces(
-            width=0.35, # Largura das barras (como são duas, menor que 0.5 fica melhor)
+            width=0.35, 
         )
         
         fig_bar.update_layout(
@@ -145,7 +139,7 @@ with col_graf2:
             yaxis_title="Qtd. Tokens",
             legend_title="Tipo",
             legend=dict(
-                orientation="h", # Legenda horizontal no topo para economizar espaço vertical
+                orientation="h",
                 yanchor="bottom",
                 y=1.02,
                 xanchor="right",

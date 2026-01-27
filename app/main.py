@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import time
 from services.database import init_database
-from utils.ui_components import formatar_titulo_erro
+from utils.ui_components import formatar_titulo_erro, renderizar_stepper
 from utils.file_session import FileSession
 from services.logger import init_logger_table
 from services.script_cache import init_script_costs_table
@@ -22,6 +22,8 @@ st.markdown("""
 
 auth = AuthManager()
 auth.verificar_autenticacao()
+
+renderizar_stepper(1)
 
 if "banco_dados" not in st.session_state:
     init_database()

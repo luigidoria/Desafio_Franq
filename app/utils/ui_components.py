@@ -100,3 +100,26 @@ def ir_para_dashboard():
     st.session_state["fila_arquivos"] = []
     st.session_state["pagina_anterior"] = "main.py"
     st.switch_page("pages/4_Dashboard.py")
+
+def renderizar_stepper(etapa_atual):
+    st.markdown("###")
+    passos = {
+        1: "Upload & Validação",
+        2: "Correção via IA",
+        3: "Inserção no Banco"
+    }
+    
+    with st.container():
+        cols = st.columns(3, gap="small")    
+        for i, col in enumerate(cols, 1):
+            with col:
+                if i == etapa_atual:
+                    st.markdown(f"#### :green[{i}. {passos[i]}]")
+                    st.progress(100)
+                elif i < etapa_atual:
+                    st.markdown(f"**{i}. {passos[i]}**")
+                    st.progress(100)
+                else:
+                    st.markdown(f":grey[{i}. {passos[i]}]")
+        
+        st.divider()

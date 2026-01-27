@@ -8,7 +8,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.services.insert_data import inserir_transacoes, registrar_log_ingestao
-from app.utils.ui_components import exibir_preview, exibir_relatorio, preparar_retorno_ia, ir_para_dashboard
+from app.utils.ui_components import exibir_preview, exibir_relatorio, preparar_retorno_ia, ir_para_dashboard, renderizar_stepper
 from services.auth_manager import AuthManager
 
 st.set_page_config(
@@ -27,10 +27,11 @@ st.markdown("""
 auth = AuthManager()
 auth.verificar_autenticacao()
 
+renderizar_stepper(3)
+
 with st.sidebar:
     st.header("Navegação")
     
-    # Alteração: Removido st.session_state["fila_arquivos"] = [] para não perder dados ao voltar
     if st.button("Voltar para Início", width='stretch'):
         st.switch_page("main.py")
         
