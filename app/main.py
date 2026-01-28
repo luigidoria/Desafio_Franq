@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import time
 from services.database import init_database
-from utils.ui_components import formatar_titulo_erro, renderizar_stepper, configurar_estilo_visual
+from utils.ui_components import formatar_titulo_erro, renderizar_cabecalho, configurar_estilo_visual
 from utils.file_session import FileSession
 from services.logger import init_logger_table
 from services.script_cache import init_script_costs_table
@@ -46,11 +46,28 @@ with st.sidebar:
     st.divider()
     st.caption("Faça o upload dos arquivos CSV para iniciar o fluxo de validação e correção.")
 
-#st.title("Portal de Ingestão")
-renderizar_stepper(1)
-st.markdown("Gerencie o upload e processamento de arquivos financeiros.")
+renderizar_cabecalho(1, "Gerencie o upload e processamento de arquivos financeiros.")
 
-st.divider()
+
+col_texto, col_modelo = st.columns([3, 1])
+
+with col_texto:
+    st.markdown("### Upload de Arquivos")
+    st.markdown("O sistema aceita arquivos CSV. Certifique-se de que os dados sigam o padrão da empresa.")
+
+with col_modelo:
+    csv_exemplo = """id_transacao,data_transacao,valor,tipo,categoria,descricao,conta_origem,conta_destino,status
+TRX-876-2025,2025-10-20,700.50,CREDITO,ACADEMIA,Mensalidade outubro,CC-19555,,CONFIRMADO
+TRX-877-2025,2025-10-23,89.90,DEBITO,LIVRARIA,Livro de dados,CC-19555,,CONFIRMADO"""
+    
+    st.download_button(
+        label="Baixar Planilha Modelo",
+        data=csv_exemplo,
+        file_name="modelo_importacao.csv",
+        mime="text/csv",
+        use_container_width=True,
+        help="Baixe este arquivo para ver quais colunas são obrigatórias."
+    )
 
 with st.container(border=True):
     st.subheader("Upload de Arquivos")
