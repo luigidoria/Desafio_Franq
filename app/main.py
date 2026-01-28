@@ -231,12 +231,12 @@ if st.session_state["fila_arquivos"]:
                                 permitidos = erro.get("valores_permitidos", [])
                                 default = erro.get("default", "Nenhum")
                                 
-                                texto_coluna = f"`{col_origem}`"
-                                st.markdown(f"Coluna Afetada: {texto_coluna}")
-                                st.markdown(f"Valores Aceitos: `{', '.join(permitidos)}`")
-                                
+                                c1, c2 = st.columns(2)
+                                c1.markdown(f"**Coluna Afetada:** `{col_origem}`")
                                 if default:
-                                    st.markdown(f"Valor Padrão: `{default}`")
+                                    c2.markdown(f"**Valor Padrão:** `{default}`")
+                                
+                                st.markdown(f"**Valores Aceitos:** `{', '.join(permitidos)}`")
                                 
                                 if invalidos:
                                     dados_invalidos = [{"Valor Encontrado": str(v)} for v in invalidos[:10]]
@@ -247,7 +247,7 @@ if st.session_state["fila_arquivos"]:
                                         pd.DataFrame(dados_invalidos),
                                         hide_index=True,
                                         use_container_width=True
-                                    )          
+                                    )
                             else:
                                 st.write(erro)
 
