@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.services.logger import carregar_dados
 from services.auth_manager import AuthManager
-from app.utils.ui_components import configurar_estilo_visual
+from app.utils.ui_components import configurar_estilo_visual, simplificar_msg_erro
 
 st.set_page_config(
     page_title="Dashboard",
@@ -181,9 +181,10 @@ with col_graf4:
         st.subheader("Log de Erros Recentes")
         st.caption("Últimos registros de falha no sistema")
         
-        df_erros = df[df['status'] == 'FALHA']
+        df_erros = df[df['status'] == 'FALHA'].copy()
         
         if not df_erros.empty:
+            df_erros['mensagem_erro'] = df_erros['mensagem_erro'].apply(simplificar_msg_erro)
             st.dataframe(
                 df_erros[['created_at', 'arquivo_nome', 'mensagem_erro']],
                 width='stretch',
