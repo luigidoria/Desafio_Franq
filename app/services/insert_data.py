@@ -1,37 +1,12 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
-import json
 from pathlib import Path
-from typing import Dict, Any
-from app.utils.data_handler import carregar_template
-
-def normalizar_valor(valor: Any, tipo_coluna: str, template: Dict) -> str:
-    if pd.isna(valor) or valor is None:
-        if tipo_coluna == 'status':
-            return template['colunas']['status']['validacao'].get('default', 'PENDENTE')
-        return ''
-    
-    valor_normalizado = str(valor).upper().strip()
-    
-    config = template['colunas'].get(tipo_coluna, {}).get('validacao', {})
-    mapeamento = config.get('mapeamento', {})
-    
-    mapeamento_upper = {k.upper(): v for k, v in mapeamento.items()}
-    valor_final = mapeamento_upper.get(valor_normalizado, valor_normalizado)
-    
-    if tipo_coluna == 'status':
-        valores_permitidos = config.get('valores_permitidos', [])
-        if valor_final not in valores_permitidos:
-            return config.get('default', 'PENDENTE')
-            
-    return valor_final
+from typing import Dict
 
 def inserir_transacoes(df: pd.DataFrame) -> Dict:
     db_path = Path(__file__).parent.parent.parent / "database" / "transacoes.db"
     conn = None
-    
-    template = carregar_template()
         
     try:
         df["id_transacao"] = df["id_transacao"].astype(str).str.strip()
@@ -53,24 +28,25 @@ def inserir_transacoes(df: pd.DataFrame) -> Dict:
         for index, row in df.iterrows():
             id_transacao = row['id_transacao']
             if id_transacao in ids_existentes:
-                    registros_duplicados += 1
-                    erros.append({
-                        "linha": index + 1,
-                        "id_transacao": id_transacao,
-                        "erro": "ID duplicado (já existe no banco)"
-                    })
-                    continue
+                registros_duplicados += 1
+                erros.append({
+                    "linha": index + 1,
+                    "id_transacao": id_transacao,
+                    "erro": "ID duplicado (já existe no banco)"
+                })
+                continue
+            
             try:             
                 dados_tupla = (
                     id_transacao,
                     row['data_transacao'],
                     float(row['valor']),
-                    normalizar_valor(row.get('tipo'), 'tipo', template),
-                    normalizar_valor(row.get('categoria'), 'categoria', template),
-                    row.get('descricao', None),
+                    row.get('tipo'),
+                    row.get('categoria'),
+                    row.get('descricao'),
                     row['conta_origem'],
-                    row.get('conta_destino', None),
-                    normalizar_valor(row.get('status'), 'status', template)
+                    row.get('conta_destino'),
+                    row.get('status')
                 )
                 novos_registros.append(dados_tupla)
                 

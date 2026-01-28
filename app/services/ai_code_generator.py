@@ -10,7 +10,7 @@ from app.services.script_cache import gerar_hash_estrutura, buscar_script_cache
 from app.utils.data_handler import carregar_template
 from app.utils.ui_components import formatar_titulo_erro
 
-def _construir_instrucoes_dinamicas(detalhes_erros):
+def _construir_instrucoes_dinamicas(detalhes_erros, template):
     instrucoes_estrutura = []
     instrucoes_dados = []
     
@@ -25,11 +25,22 @@ def _construir_instrucoes_dinamicas(detalhes_erros):
         
         if tipo == "colunas_faltando":
             cols = erro.get("colunas", [])
-            cols_str = ", ".join([f"'{c}'" for c in cols])
-            instrucoes_estrutura.append(
-                f"CRITICO - COLUNAS FALTANDO: O DataFrame NAO possui as colunas obrigatorias [{cols_str}]. "
-                f"Voce DEVE cria-las explicitamente. Preencha com None (objeto Python nativo) para garantir compatibilidade com SQL. NAO use pd.NA."
-            )
+            for col in cols:
+                config = template.get("colunas", {}).get(col, {}).get("validacao", {})
+                default_val = config.get("default")
+                
+                if default_val is not None:
+                    val_str = f"'{default_val}'" if isinstance(default_val, str) else str(default_val)
+                    instrucoes_estrutura.append(
+                        f"CRITICO - COLUNA FALTANDO ('{col}'): O DataFrame NAO possui a coluna obrigatoria '{col}'. "
+                        f"Voce DEVE cria-la e preencher TODOS os valores com o padrao {val_str}."
+                    )
+                    print(col, val_str)
+                else:
+                    instrucoes_estrutura.append(
+                        f"CRITICO - COLUNA FALTANDO ('{col}'): O DataFrame NAO possui a coluna obrigatoria '{col}'. "
+                        f"Voce DEVE cria-la e preencher com None (objeto Python nativo)."
+                    )
             
         elif tipo == "nomes_colunas":
             mapeamento = erro.get("mapeamento", {})
@@ -132,7 +143,7 @@ def gerar_codigo_correcao_ia(df, resultado_validacao, ignorar_cache=False):
     
     template = carregar_template()
     
-    instrucoes_especificas = _construir_instrucoes_dinamicas(resultado_validacao["detalhes"])
+    instrucoes_especificas = _construir_instrucoes_dinamicas(resultado_validacao["detalhes"],template)
     
     sample_data = df.head(3).to_dict('records')
     dtypes_info = df.dtypes.to_string()
