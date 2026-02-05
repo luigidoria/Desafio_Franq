@@ -1,5 +1,3 @@
-Markdown
-
 # Generative AI Data Refiner
 
 ## Índice
